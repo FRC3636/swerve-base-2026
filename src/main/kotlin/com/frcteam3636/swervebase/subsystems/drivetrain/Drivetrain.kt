@@ -32,7 +32,6 @@ import edu.wpi.first.math.util.Units
 import edu.wpi.first.networktables.NetworkTableInstance
 import edu.wpi.first.util.sendable.Sendable
 import edu.wpi.first.util.sendable.SendableBuilder
-import edu.wpi.first.wpilibj.Alert
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.Joystick
 import edu.wpi.first.wpilibj2.command.Command
@@ -348,8 +347,8 @@ object Drivetrain : Subsystem, Sendable {
         /** Unit: Rotations per second */
         const val ROTATION_SENSITIVITY = 0.8
 
-        val WHEEL_BASE = 30.inches
-        val TRACK_WIDTH = 28.inches
+        val ROBOT_LENGTH = 30.inches
+        val ROBOT_WIDTH = 28.inches
 
         val BUMPER_WIDTH = 33.5.inches
         val BUMPER_LENGTH = 35.5.inches
@@ -363,16 +362,16 @@ object Drivetrain : Subsystem, Sendable {
 
         val MODULE_POSITIONS = PerCorner(
             frontLeft = Corner(Pose2d(
-                Translation2d(WHEEL_BASE, TRACK_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                Translation2d(ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
             ), FRONT_LEFT_MAGNET_OFFSET),
             frontRight = Corner(Pose2d(
-                Translation2d(WHEEL_BASE, -TRACK_WIDTH) / 2.0, Rotation2d.fromDegrees(270.0)
+                Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(270.0)
             ), FRONT_RIGHT_MAGNET_OFFSET),
             backLeft = Corner(Pose2d(
-                Translation2d(-WHEEL_BASE, TRACK_WIDTH) / 2.0, Rotation2d.fromDegrees(90.0)
+                Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(90.0)
             ), BACK_LEFT_MAGNET_OFFSET),
             backRight = Corner(Pose2d(
-                Translation2d(-WHEEL_BASE, -TRACK_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                Translation2d(-ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
             ), BACK_RIGHT_MAGNET_OFFSET),
         )
 

@@ -11,6 +11,7 @@ import com.frcteam3636.version.GIT_SHA
 import edu.wpi.first.hal.FRCNetComm.tInstances
 import edu.wpi.first.hal.FRCNetComm.tResourceType
 import edu.wpi.first.hal.HAL
+import edu.wpi.first.net.WebServer
 import edu.wpi.first.wpilibj.*
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard
 import edu.wpi.first.wpilibj.util.WPILibVersion
@@ -75,6 +76,8 @@ object Robot : LoggedRobot() {
         configureDashboard()
 
         Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
+
+        WebServer.start(5800, Filesystem.getDeployDirectory().path);
 
     }
 

@@ -7,13 +7,12 @@ import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BUMPER_LENGTH
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BUMPER_WIDTH
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
-import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.TRACK_WIDTH
-import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.WHEEL_BASE
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROBOT_WIDTH
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROBOT_LENGTH
 import com.frcteam3636.swervebase.utils.math.degreesPerSecond
 import com.frcteam3636.swervebase.utils.math.kilogramSquareMeters
 import com.frcteam3636.swervebase.utils.math.volts
 import com.frcteam3636.swervebase.utils.swerve.PerCorner
-import com.studica.frc.AHRS
 import edu.wpi.first.apriltag.AprilTagFieldLayout
 import edu.wpi.first.apriltag.AprilTagFields
 import edu.wpi.first.math.geometry.Pose2d
@@ -115,8 +114,8 @@ class DrivetrainIOSim : DrivetrainIO() {
             )
             // Configures the track length and track width (spacing between swerve modules)
             .withTrackLengthTrackWidth(
-                WHEEL_BASE,
-                TRACK_WIDTH
+                ROBOT_LENGTH,
+                ROBOT_WIDTH
             ) // Configures the bumper size (dimensions of the robot bumper)
             .withBumperSize(BUMPER_WIDTH, BUMPER_LENGTH)
 
