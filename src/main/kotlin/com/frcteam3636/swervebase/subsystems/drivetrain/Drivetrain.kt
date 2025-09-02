@@ -55,24 +55,6 @@ object Drivetrain : Subsystem, Sendable {
     }
     val inputs = LoggedDrivetrainInputs()
 
-
-    private val alignPositionPublisher = NetworkTableInstance.getDefault()
-        .getDoubleArrayTopic("RGB/Auto Align/Position Relative to Align Target")
-        .publish()
-    val alignStatePublisher = NetworkTableInstance.getDefault()
-        .getIntegerTopic("RGB/Movement State")
-        .publish()
-        .apply {
-            setDefault(AlignState.NotRunning.raw)
-        }
-
-    enum class AlignState(val raw: Long) {
-        NotRunning(0),
-        AlignPathfinding(1),
-        Aligning(2),
-        Success(3),
-    }
-
     private val mt2Algo = LimelightAlgorithm.MegaTag2({
         poseEstimator.estimatedPosition.rotation
     }, {
