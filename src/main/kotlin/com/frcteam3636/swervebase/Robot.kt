@@ -1,19 +1,21 @@
 package com.frcteam3636.swervebase
 
+import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.SignalLogger
 import com.ctre.phoenix6.StatusSignal
+import com.frcteam3636.swervebase.Dashboard.field
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.version.BUILD_DATE
 import com.frcteam3636.version.DIRTY
 import com.frcteam3636.version.GIT_BRANCH
 import com.frcteam3636.version.GIT_SHA
+import com.pathplanner.lib.util.PathPlannerLogging
 import edu.wpi.first.hal.FRCNetComm.tInstances
 import edu.wpi.first.hal.FRCNetComm.tResourceType
 import edu.wpi.first.hal.HAL
 import edu.wpi.first.net.WebServer
 import edu.wpi.first.wpilibj.*
-import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard
 import edu.wpi.first.wpilibj.util.WPILibVersion
 import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.CommandScheduler
@@ -55,8 +57,10 @@ object Robot : LoggedRobot() {
     private val rioCANBus = CANBus("rio")
     private val canivore = CANBus("*")
 
+    private val statusSignals = mutableListOf<BaseStatusSignal>()
+
     /** Status signals used to check the health of the robot's hardware */
-    val statusSignals = mutableMapOf<String, StatusSignal<*>>()
+    val healthStatusSignals = mutableMapOf<String, StatusSignal<*>>()
 
     override fun robotInit() {
         // Report the use of the Kotlin Language for "FRC Usage Report" statistics
@@ -161,7 +165,14 @@ object Robot : LoggedRobot() {
 
     /** Add data to the driver station dashboard. */
     private fun configureDashboard() {
-        Dashboard.showTeleopTab(Shuffleboard.getTab("Teleoperated"))
+        PathPlannerLogging.setLogTargetPoseCallback {
+            field.getObject("target pose").pose = it
+            Logger.recordOutput("/Drivetrain/Target Pose", it)
+        }
+        PathPlannerLogging.setLogActivePathCallback {
+            field.getObject("path").poses = it
+            Logger.recordOutput("/Drivetrain/Desired Path", *it.toTypedArray())
+        }
     }
 
     override fun disabledInit() {
@@ -187,6 +198,10 @@ object Robot : LoggedRobot() {
     override fun robotPeriodic() {
         Dashboard.update()
         reportDiagnostics()
+
+        statusSignals += Drivetrain.getStatusSignals()
+        BaseStatusSignal.refreshAll(*statusSignals.toTypedArray())
+        statusSignals.clear()
 
         CommandScheduler.getInstance().run()
 

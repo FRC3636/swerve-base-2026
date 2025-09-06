@@ -1,7 +1,7 @@
 package com.frcteam3636.swervebase.subsystems.drivetrain
 
+import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.configs.CANcoderConfiguration
-import com.ctre.phoenix6.configs.Slot0Configs
 import com.ctre.phoenix6.configs.TalonFXConfiguration
 import com.ctre.phoenix6.controls.PositionVoltage
 import com.ctre.phoenix6.controls.VelocityVoltage
@@ -41,12 +41,13 @@ interface SwerveModule {
     // and magnitude equal to the total signed distance traveled by the wheel.
     val position: SwerveModulePosition
 
+    fun getSignals(): Array<BaseStatusSignal> { return arrayOf() }
     fun periodic() {}
     fun characterize(voltage: Voltage)
 }
 
 class Mk5SwerveModule(
-    private val drivingMotor: SwerveDrivingMotor, private val turningMotor: SwerveTurningMotor, private val chassisAngle: Rotation2d
+    val drivingMotor: SwerveDrivingMotor, val turningMotor: SwerveTurningMotor, private val chassisAngle: Rotation2d
 ) : SwerveModule {
     override val state: SwerveModuleState
         get() = SwerveModuleState(
@@ -78,16 +79,26 @@ class Mk5SwerveModule(
 
             field = corrected
         }
+
+    override fun getSignals(): Array<BaseStatusSignal> {
+        return turningMotor.getSignals() + drivingMotor.getSignals()
+    }
 }
 
 interface SwerveTurningMotor {
     var position: Angle
+    fun getSignals(): Array<BaseStatusSignal> {
+        return arrayOf()
+    }
 }
 
 interface SwerveDrivingMotor {
     val position: Distance
     var velocity: LinearVelocity
     fun setVoltage(voltage: Voltage)
+    fun getSignals(): Array<BaseStatusSignal> {
+        return arrayOf()
+    }
 }
 
 class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
@@ -107,18 +118,20 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
     }
 
     init {
-        Robot.statusSignals[id.name] = inner.version
+        Robot.healthStatusSignals[id.name] = inner.version
+        BaseStatusSignal.setUpdateFrequencyForAll(100.0, inner.position, inner.velocity)
+        inner.optimizeBusUtilization()
     }
 
     override val position: Distance
-        get() = inner.position.value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
+        get() = inner.getPosition(false).value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
 
     private var velocityControl = VelocityVoltage(0.0).apply {
         EnableFOC = true
     }
 
     override var velocity: LinearVelocity
-        get() = inner.velocity.value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
+        get() = inner.getVelocity(false).value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
         set(value) {
             inner.setControl(velocityControl.withVelocity(value.toAngular(WHEEL_RADIUS) / DRIVING_GEAR_RATIO_TALON))
         }
@@ -129,6 +142,10 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
 
     override fun setVoltage(voltage: Voltage) {
         inner.setControl(voltageControl.withOutput(voltage.inVolts()))
+    }
+
+    override fun getSignals(): Array<BaseStatusSignal> {
+        return arrayOf(inner.getPosition(false), inner.getVelocity(false))
     }
 }
 
@@ -152,14 +169,15 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
         })
     }
 
-    private val encoder = CANcoder(encoderId).apply {
-        configurator.apply(CANcoderConfiguration().apply {
-            MagnetSensor.MagnetOffset = magnetOffset
-        })
-    }
-
     init {
-        Robot.statusSignals[id.name] = inner.version
+        Robot.healthStatusSignals[id.name] = inner.version
+        CANcoder(encoderId).apply {
+            configurator.apply(CANcoderConfiguration().apply {
+                MagnetSensor.MagnetOffset = magnetOffset
+            })
+        }
+        BaseStatusSignal.setUpdateFrequencyForAll(100.0, inner.position)
+        inner.optimizeBusUtilization()
     }
 
     private val positonControl = PositionVoltage(0.0).apply {
@@ -170,8 +188,11 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
         set(value) {
             inner.setControl(positonControl.withPosition(value))
         }
-        get() = inner.position.value
+        get() = inner.getPosition(false).value
 
+    override fun getSignals(): Array<BaseStatusSignal> {
+        return arrayOf(inner.getPosition(false))
+    }
 }
 
 //

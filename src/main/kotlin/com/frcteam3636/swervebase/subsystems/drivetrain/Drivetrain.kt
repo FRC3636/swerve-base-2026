@@ -1,5 +1,6 @@
 package com.frcteam3636.swervebase.subsystems.drivetrain
 
+import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.SignalLogger
 import com.frcteam3636.swervebase.CTREDeviceId
 import com.frcteam3636.swervebase.Robot
@@ -249,6 +250,10 @@ object Drivetrain : Subsystem, Sendable {
         builder.addDoubleProperty("Back Right Velocity", { io.modules.backLeft.state.speedMetersPerSecond }, null)
     }
 
+    fun getStatusSignals(): MutableList<BaseStatusSignal> {
+        return io.getStatusSignals()
+    }
+
     private fun isInDeadband(translation: Translation2d) =
         abs(translation.x) < JOYSTICK_DEADBAND && abs(translation.y) < JOYSTICK_DEADBAND
 
@@ -363,7 +368,6 @@ object Drivetrain : Subsystem, Sendable {
 
         val ROTATION_PID_GAINS = PIDGains(3.0, 0.0, 0.4)
 
-        //        // Pathing
         val DEFAULT_PATHING_CONSTRAINTS =
             PathConstraints(
                 FREE_SPEED.baseUnitMagnitude() * 2,
@@ -371,46 +375,6 @@ object Drivetrain : Subsystem, Sendable {
                 ROTATION_SPEED.baseUnitMagnitude(),
                 24.961
             )
-
-        // FIXME: Update for 2025
-        val PP_ROBOT_CONFIG_COMP = RobotConfig(
-            120.0.pounds, // FIXME: Placeholder
-            0.kilogramSquareMeters, // FIXME: Placeholder
-            ModuleConfig(
-                WHEEL_RADIUS,
-                FREE_SPEED,
-                1.0, // FIXME: Placeholder
-                DCMotor.getKrakenX60(1),
-                DRIVING_CURRENT_LIMIT,
-                1
-            ),
-            *MODULE_POSITIONS.map {
-                it.position.translation
-            }.toTypedArray()
-        )
-
-        val PP_ROBOT_CONFIG_PROTOTYPE = RobotConfig(
-            120.pounds, // FIXME: Placeholder
-            0.kilogramSquareMeters, // FIXME: Placeholder
-            ModuleConfig(
-                WHEEL_RADIUS,
-                FREE_SPEED,
-                1.0, // FIXME: Placeholder
-                DCMotor.getNEO(1),
-                DRIVING_CURRENT_LIMIT,
-                1
-            ),
-            *MODULE_POSITIONS.map {
-                it.position.translation
-            }.toTypedArray()
-        )
-
-        val PP_ROBOT_CONFIG = when (Robot.model) {
-            Robot.Model.SIMULATION -> PP_ROBOT_CONFIG_COMP
-            Robot.Model.COMPETITION -> PP_ROBOT_CONFIG_COMP
-            Robot.Model.PROTOTYPE -> PP_ROBOT_CONFIG_PROTOTYPE
-        }
-
 
         // CAN IDs
         val KRAKEN_MODULE_CAN_IDS =

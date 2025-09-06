@@ -1,5 +1,6 @@
 package com.frcteam3636.swervebase.subsystems.drivetrain
 
+import com.ctre.phoenix6.BaseStatusSignal
 import com.frcteam3636.swervebase.CTREDeviceId
 import com.frcteam3636.swervebase.Diagnostics
 import com.frcteam3636.swervebase.Pigeon2
@@ -65,6 +66,16 @@ abstract class DrivetrainIO {
         for (module in modules) {
             module.characterize(voltage)
         }
+    }
+
+    fun getStatusSignals(): MutableList<BaseStatusSignal> {
+        val signals = mutableListOf<BaseStatusSignal>()
+
+        modules.forEach { module ->
+            signals += module.getSignals()
+        }
+        signals += gyro.getStatusSignals()
+        return signals
     }
 }
 
