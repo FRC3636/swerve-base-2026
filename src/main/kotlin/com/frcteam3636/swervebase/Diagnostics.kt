@@ -1,6 +1,7 @@
 package com.frcteam3636.swervebase
 
 import com.ctre.phoenix6.CANBus
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.swervebase.subsystems.drivetrain.Gyro
 import com.frcteam3636.swervebase.utils.cachedStatus
 import com.frcteam3636.swervebase.utils.math.hasElapsed
@@ -157,10 +158,8 @@ object Diagnostics {
             reportFault(Fault.DubiousAutoChoice)
         }
 
-        synchronized(limelightsSync) {
-            if (!limelightsConnected) {
-                reportFault(Fault.LimelightDisconnected)
-            }
+        if (!Drivetrain.allPoseProvidersConnected) {
+            reportFault(Fault.LimelightDisconnected)
         }
     }
 

@@ -79,10 +79,7 @@ object Robot : LoggedRobot() {
         configureBindings()
         configureDashboard()
 
-        Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
-
-        WebServer.start(5800, Filesystem.getDeployDirectory().path);
-
+//        Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
     }
 
     /** Start logging or pull replay logs from a file */
