@@ -163,11 +163,11 @@ object Robot : LoggedRobot() {
     private fun configureDashboard() {
         PathPlannerLogging.setLogTargetPoseCallback {
             field.getObject("target pose").pose = it
-            Logger.recordOutput("/Drivetrain/Target Pose", it)
+            Logger.recordOutput("Drivetrain/Target Pose", it)
         }
         PathPlannerLogging.setLogActivePathCallback {
             field.getObject("path").poses = it
-            Logger.recordOutput("/Drivetrain/Desired Path", *it.toTypedArray())
+            Logger.recordOutput("Drivetrain/Desired Path", *it.toTypedArray())
         }
     }
 
