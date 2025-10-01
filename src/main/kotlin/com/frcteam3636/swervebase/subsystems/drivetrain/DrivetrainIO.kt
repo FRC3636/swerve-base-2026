@@ -93,7 +93,7 @@ class DrivetrainIOReal(override val modules: PerCorner<SwerveModule>) : Drivetra
                 MODULE_POSITIONS.zip(Drivetrain.Constants.KRAKEN_MODULE_CAN_IDS)
                     .map { (corner, ids) ->
                         val (driveId, turnId, encoderId) = ids
-                        Mk5SwerveModule(
+                        Mk5nSwerveModule(
                             DrivingTalon(driveId),
                             TurningTalon(turnId, encoderId, corner.magnetOffset),
                             corner.position.rotation

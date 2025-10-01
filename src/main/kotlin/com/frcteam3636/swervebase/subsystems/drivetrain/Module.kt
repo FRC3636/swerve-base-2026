@@ -46,7 +46,7 @@ interface SwerveModule {
     fun characterize(voltage: Voltage)
 }
 
-class Mk5SwerveModule(
+class Mk5nSwerveModule(
     val drivingMotor: SwerveDrivingMotor, val turningMotor: SwerveTurningMotor, private val chassisAngle: Rotation2d
 ) : SwerveModule {
     override val state: SwerveModuleState
