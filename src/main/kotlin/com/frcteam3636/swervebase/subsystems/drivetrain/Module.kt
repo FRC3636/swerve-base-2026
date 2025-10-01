@@ -164,6 +164,10 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
                     RotorToSensorRatio = TURNING_MOTOR_TO_MECHANISM_RATIO
                     FeedbackRemoteSensorID = encoderId.num
                 }
+                CurrentLimits.apply {
+                    StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
+                    StatorCurrentLimitEnable = true
+                }
             }
         })
     }
@@ -267,4 +271,4 @@ internal val DRIVING_FF_GAINS_TALON: MotorFFGains = MotorFFGains(0.22852, 0.1256
 internal val TURNING_PID_GAINS: PIDGains = PIDGains(100.0, 0.0, 0.5)
 internal val TURNING_FF_GAINS: MotorFFGains = MotorFFGains(0.1, 2.66, 0.0)
 internal val DRIVING_CURRENT_LIMIT = 37.amps
-internal val TURNING_CURRENT_LIMIT = 20.amps
+internal val TURNING_CURRENT_LIMIT = 60.amps
