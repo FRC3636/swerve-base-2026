@@ -68,14 +68,6 @@ object Drivetrain : Subsystem, Sendable {
         )
 
         else -> mapOf(
-            "Limelight Right" to LimelightPoseProvider(
-                "limelight-right",
-                mt2Algo
-            ),
-            "Limelight Left" to LimelightPoseProvider(
-                "limelight-left",
-                mt2Algo
-            ),
 //            "Limelight Rear" to LimelightPoseProvider(
 //                "limelight-rear",
 //                algorithm = mt2Algo
