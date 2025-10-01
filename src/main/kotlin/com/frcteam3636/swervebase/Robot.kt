@@ -59,8 +59,7 @@ object Robot : LoggedRobot() {
 
     private val statusSignals = mutableListOf<BaseStatusSignal>()
 
-    /** Status signals used to check the health of the robot's hardware */
-    val healthStatusSignals = mutableMapOf<String, StatusSignal<*>>()
+    var beforeFirstEnable = true
 
     override fun robotInit() {
         // Report the use of the Kotlin Language for "FRC Usage Report" statistics
@@ -206,12 +205,15 @@ object Robot : LoggedRobot() {
     }
 
     override fun autonomousInit() {
-        Drivetrain.zeroGyro(true)
+        if (beforeFirstEnable)
+            beforeFirstEnable = true
         autoCommand = Dashboard.autoChooser.selected
         autoCommand?.schedule()
     }
 
     override fun teleopInit() {
+        if (beforeFirstEnable)
+            beforeFirstEnable = true
         autoCommand?.cancel()
     }
 

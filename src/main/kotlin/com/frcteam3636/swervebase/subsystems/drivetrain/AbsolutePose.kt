@@ -11,24 +11,24 @@ import com.frcteam3636.swervebase.utils.math.seconds
 import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
-import edu.wpi.first.math.geometry.*
+import edu.wpi.first.math.geometry.Pose2d
+import edu.wpi.first.math.geometry.Pose3d
+import edu.wpi.first.math.geometry.Rotation2d
+import edu.wpi.first.math.geometry.Transform3d
 import edu.wpi.first.math.numbers.N1
 import edu.wpi.first.math.numbers.N3
+import edu.wpi.first.networktables.NetworkTableInstance
 import edu.wpi.first.units.Units.DegreesPerSecond
 import edu.wpi.first.units.measure.AngularVelocity
 import edu.wpi.first.units.measure.Time
 import edu.wpi.first.util.struct.Struct
 import edu.wpi.first.util.struct.StructSerializable
-import edu.wpi.first.wpilibj.Alert
-import edu.wpi.first.wpilibj.Alert.AlertType
-import edu.wpi.first.wpilibj.Timer
 import org.littletonrobotics.junction.LogTable
 import org.littletonrobotics.junction.inputs.LoggableInputs
 import org.photonvision.PhotonCamera
 import org.photonvision.PhotonPoseEstimator
 import org.photonvision.simulation.PhotonCameraSim
 import org.photonvision.simulation.SimCameraProperties
-import org.team9432.annotation.Logged
 import java.nio.ByteBuffer
 import kotlin.concurrent.thread
 
@@ -88,11 +88,29 @@ sealed class LimelightAlgorithm {
 data class LimelightMeasurement(
     var poseMeasurement: AbsolutePoseMeasurement? = null,
     var observedTags: IntArray = intArrayOf(),
-)
+) /* --- BEGIN KOTLIN COMPILER GENERATED CODE ---- */ {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as LimelightMeasurement
+
+        if (poseMeasurement != other.poseMeasurement) return false
+        if (!observedTags.contentEquals(other.observedTags)) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = poseMeasurement?.hashCode() ?: 0
+        result = 31 * result + observedTags.contentHashCode()
+        return result
+    }
+} /* --- END KOTLIN COMPILER GENERATED CODE ---- */
 
 class LimelightPoseProvider(
     private val name: String,
-    private val algorithm: LimelightAlgorithm,
+    private val megaTagV2: LimelightAlgorithm.MegaTag2,
 ) : AbsolutePoseProvider {
     // References:
     // https://docs.limelightvision.io/docs/docs-limelight/tutorials/tutorial-swerve-pose-estimation
@@ -102,6 +120,12 @@ class LimelightPoseProvider(
 
     private var measurement: AbsolutePoseMeasurement? = null
     private var mutex = Any()
+
+    private var lastSeenHb: Double = 0.0
+    private var hbSub = NetworkTableInstance.getDefault().getTable(name).getDoubleTopic("hb").subscribe(0.0)
+    private var loopsSinceLastSeen: Int = 0
+
+    private var currentAlgorithm: LimelightAlgorithm = LimelightAlgorithm.MegaTag
 
     init {
         thread(isDaemon = true) {
@@ -119,7 +143,10 @@ class LimelightPoseProvider(
     private fun updateCurrentMeasurement(): LimelightMeasurement {
         val measurement = LimelightMeasurement()
 
-        when (algorithm) {
+        if ((!Robot.beforeFirstEnable) && currentAlgorithm == LimelightAlgorithm.MegaTag)
+            currentAlgorithm = megaTagV2
+
+        when (val algorithm = currentAlgorithm) {
             is LimelightAlgorithm.MegaTag ->
                 LimelightHelpers.getBotPoseEstimate_wpiBlue(name)?.let { estimate ->
                     measurement.observedTags = estimate.rawFiducials.mapNotNull { it?.id }.toIntArray()
@@ -137,8 +164,7 @@ class LimelightPoseProvider(
                     measurement.poseMeasurement = AbsolutePoseMeasurement(
                         estimate.pose,
                         estimate.timestampSeconds.seconds,
-                        // This value is pulled directly from the Limelight docs (linked at the top of this class)
-                        VecBuilder.fill(.5, .5, 9999999.0)
+                        VecBuilder.fill(.5, .5, .25)
                     )
                 }
 
@@ -155,12 +181,11 @@ class LimelightPoseProvider(
                     val highSpeed = algorithm.gyroVelocity.abs(DegreesPerSecond) > 720.0
                     if (estimate.tagCount == 0 || highSpeed) return measurement
 
-
                     measurement.poseMeasurement = AbsolutePoseMeasurement(
                         estimate.pose,
                         estimate.timestampSeconds.seconds,
-                        // This value is also pulled directly from the Limelight docs
-                        VecBuilder.fill(.7, .7, 9999999.0)
+                        // This value is pulled directly from the Limelight docs (linked at the top of this class)
+                        VecBuilder.fill(.5, .5, 9999999.0)
                     )
                 }
             }
@@ -171,17 +196,19 @@ class LimelightPoseProvider(
     }
 
     override fun updateInputs(inputs: AbsolutePoseProviderInputs) {
-//        val measurement = this.updateCurrentMeasurement()
         synchronized(mutex) {
             inputs.measurement = measurement
             inputs.observedTags = observedTags
-
-            // We assume the camera has disconnected if there are no new updates for several ticks.
-            inputs.connected = if (measurement != null) {
-                val timeSinceLastUpdate = Timer.getTimestamp().seconds - measurement!!.timestamp
-                timeSinceLastUpdate > CONNECTED_TIMEOUT
-            } else false
         }
+
+        // We assume the camera has disconnected if there are no new updates for several ticks.
+        val hb = hbSub.get()
+        inputs.connected = hb > lastSeenHb || loopsSinceLastSeen < CONNECTED_TIMEOUT
+        if (hb == lastSeenHb)
+            loopsSinceLastSeen++
+        else
+            loopsSinceLastSeen = 0
+        lastSeenHb = hb
     }
 
     companion object {
@@ -191,7 +218,7 @@ class LimelightPoseProvider(
          * This is a somewhat conservative limit, but it is only applied when using the old MegaTag v1 algorithm.
          * It's possible it could be increased if it's too restrictive.
          */
-        private val MAX_SINGLE_TAG_DISTANCE = 3.meters
+        private val MAX_SINGLE_TAG_DISTANCE = 4.5.meters
 
         /**
          * The acceptable ambiguity for a single-tag reading on MegaTag v1.
@@ -199,9 +226,9 @@ class LimelightPoseProvider(
         private const val AMBIGUITY_THRESHOLD = 0.7
 
         /**
-         * The amount of time without an update before considering the camera to be disconnected.
+         * The amount of time (in robot ticks) an update before considering the camera to be disconnected.
          */
-        private val CONNECTED_TIMEOUT = Robot.period.seconds * 5.0
+        private const val CONNECTED_TIMEOUT = 250.0
     }
 }
 
@@ -263,7 +290,7 @@ fun SwerveDrivePoseEstimator.addAbsolutePoseMeasurement(measurement: AbsolutePos
     addVisionMeasurement(
         measurement.pose,
         measurement.timestamp.inSeconds(),
-        measurement.stdDeviation // FIXME: seems to fire the bot into orbit...?
+        measurement.stdDeviation
     )
 }
 

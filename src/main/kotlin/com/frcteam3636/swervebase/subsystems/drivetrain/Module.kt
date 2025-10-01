@@ -118,7 +118,6 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
     }
 
     init {
-        Robot.healthStatusSignals[id.name] = inner.version
         BaseStatusSignal.setUpdateFrequencyForAll(100.0, inner.position, inner.velocity)
         inner.optimizeBusUtilization()
     }
@@ -170,7 +169,6 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
     }
 
     init {
-        Robot.healthStatusSignals[id.name] = inner.version
         CANcoder(encoderId).apply {
             configurator.apply(CANcoderConfiguration().apply {
                 MagnetSensor.MagnetOffset = magnetOffset
