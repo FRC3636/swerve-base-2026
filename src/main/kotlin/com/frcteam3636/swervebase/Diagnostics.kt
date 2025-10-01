@@ -69,9 +69,6 @@ object Diagnostics {
         robotAlerts += robotAlert
     }
 
-    private val errorResetTimer = Timer().apply { start() }
-    private val knownCANBusErrors = HashMap<String, Int>()
-
     /** Report the CAN Bus's errors */
     fun report(canBus: CANBus) {
         val status = canBus.cachedStatus
@@ -82,17 +79,8 @@ object Diagnostics {
             return
         }
 
-        // If there are errors, the wiring probably disconnected or a motor isn't working.
-        val knownErrors = knownCANBusErrors[canBus.name] ?: 0
-        if (status.REC + status.TEC > knownErrors) {
+        if (status.REC + status.TEC > 0) {
             reportAlert(RobotAlert.CAN.bus(canBus).error)
-        }
-
-        // Every second we record an "acceptable" number of errors so that if a
-        // motor is plugged in after it has been erroring for a while, the alert will
-        // dismiss itself.
-        if (errorResetTimer.hasElapsed(5.seconds)) {
-            knownCANBusErrors[canBus.name] = status.REC + status.TEC
         }
     }
 
