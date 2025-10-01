@@ -7,6 +7,8 @@ import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BRAKE_POSITION
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.FREE_SPEED
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.JOYSTICK_DEADBAND
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_ROTATION_GAINS
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_TRANSLATION_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_PID_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_SENSITIVITY
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.TRANSLATION_SENSITIVITY
@@ -111,12 +113,8 @@ object Drivetrain : Subsystem, Sendable {
             this::measuredChassisSpeeds,
             this::desiredChassisSpeeds::set,
             PPHolonomicDriveController(
-                when (Robot.model) {
-                    Robot.Model.SIMULATION -> DRIVING_PID_GAINS_TALON
-                    Robot.Model.COMPETITION -> DRIVING_PID_GAINS_TALON
-                    Robot.Model.PROTOTYPE -> DRIVING_PID_GAINS_NEO
-                }.toPPLib(),
-                ROTATION_PID_GAINS.toPPLib()
+                PATH_FOLLOWING_TRANSLATION_GAINS,
+                PATH_FOLLOWING_ROTATION_GAINS
             ),
             RobotConfig.fromGUISettings(),
             // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
@@ -352,6 +350,8 @@ object Drivetrain : Subsystem, Sendable {
         private val ROTATION_SPEED = 14.604.radiansPerSecond
 
         val ROTATION_PID_GAINS = PIDGains(3.0, 0.0, 0.4)
+        val PATH_FOLLOWING_TRANSLATION_GAINS = PIDGains(5.0).toPPLib()
+        val PATH_FOLLOWING_ROTATION_GAINS = PIDGains(5.0).toPPLib()
 
         val DEFAULT_PATHING_CONSTRAINTS =
             PathConstraints(
