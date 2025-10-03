@@ -7,6 +7,7 @@ import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BRAKE_POSITION
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.FREE_SPEED
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.JOYSTICK_DEADBAND
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_ROTATION_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_TRANSLATION_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_PID_GAINS
@@ -53,7 +54,16 @@ import kotlin.math.withSign
 object Drivetrain : Subsystem, Sendable {
     private val io = when (Robot.model) {
         Robot.Model.SIMULATION -> DrivetrainIOSim()
-        Robot.Model.COMPETITION -> DrivetrainIOReal.fromKrakenSwerve()
+        Robot.Model.COMPETITION -> DrivetrainIOReal(
+            MODULE_POSITIONS.zip(Drivetrain.Constants.KRAKEN_MODULE_CAN_IDS)
+                .map { (corner, ids) ->
+                    val (driveId, turnId, encoderId) = ids
+                    Mk5nSwerveModule(
+                        DrivingTalon(driveId),
+                        TurningTalon(turnId, encoderId, corner.magnetOffset),
+                        corner.position.rotation
+                    )
+                })
     }
     val inputs = LoggedDrivetrainInputs()
 
