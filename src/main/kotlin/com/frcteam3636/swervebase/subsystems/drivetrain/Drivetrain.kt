@@ -54,7 +54,6 @@ object Drivetrain : Subsystem, Sendable {
     private val io = when (Robot.model) {
         Robot.Model.SIMULATION -> DrivetrainIOSim()
         Robot.Model.COMPETITION -> DrivetrainIOReal.fromKrakenSwerve()
-        Robot.Model.PROTOTYPE -> DrivetrainIOReal.fromKrakenSwerve()
     }
     val inputs = LoggedDrivetrainInputs()
 

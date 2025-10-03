@@ -84,7 +84,6 @@ class DrivetrainIOReal(override val modules: PerCorner<SwerveModule>) : Drivetra
     override val gyro = when (Robot.model) {
         Robot.Model.SIMULATION -> GyroSim(modules)
         Robot.Model.COMPETITION -> GyroPigeon(Pigeon2(CTREDeviceId.PigeonGyro))
-        Robot.Model.PROTOTYPE -> GyroPigeon(Pigeon2(CTREDeviceId.PigeonGyro))
     }
 
     companion object {

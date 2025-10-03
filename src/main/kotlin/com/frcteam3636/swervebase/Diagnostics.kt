@@ -44,6 +44,8 @@ object Diagnostics {
                 AlertType.kWarning
             )
 
+        object CANRefreshFailed : RobotAlert("A CAN refresh failed, outdated data is being received.", AlertType.kError)
+
         class CAN private constructor(bus: CANBus) {
             private class BusFailure(bus: CANBus) : RobotAlert("The \"${bus.humanReadableName}\" CAN bus has FAILED!")
             private class BusError(bus: CANBus) :
@@ -144,6 +146,10 @@ object Diagnostics {
 
         if (!Drivetrain.allPoseProvidersConnected) {
             reportAlert(RobotAlert.LimelightDisconnected)
+        }
+
+        if (!Robot.didRefreshSucceed) {
+            reportAlert(RobotAlert.CANRefreshFailed)
         }
     }
 

@@ -3,7 +3,6 @@ package com.frcteam3636.swervebase
 import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.SignalLogger
-import com.ctre.phoenix6.StatusSignal
 import com.frcteam3636.swervebase.Dashboard.field
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.version.BUILD_DATE
@@ -14,7 +13,6 @@ import com.pathplanner.lib.util.PathPlannerLogging
 import edu.wpi.first.hal.FRCNetComm.tInstances
 import edu.wpi.first.hal.FRCNetComm.tResourceType
 import edu.wpi.first.hal.HAL
-import edu.wpi.first.net.WebServer
 import edu.wpi.first.wpilibj.*
 import edu.wpi.first.wpilibj.util.WPILibVersion
 import edu.wpi.first.wpilibj2.command.Command
@@ -56,6 +54,7 @@ object Robot : LoggedRobot() {
 
     private val rioCANBus = CANBus("rio")
     private val canivore = CANBus("*")
+    var didRefreshSucceed = true
 
     private val statusSignals = mutableListOf<BaseStatusSignal>()
 
@@ -196,7 +195,8 @@ object Robot : LoggedRobot() {
         reportDiagnostics()
 
         statusSignals += Drivetrain.getStatusSignals()
-        BaseStatusSignal.refreshAll(*statusSignals.toTypedArray())
+        val refresh = BaseStatusSignal.refreshAll(*statusSignals.toTypedArray())
+        didRefreshSucceed = refresh.isOK
         statusSignals.clear()
 
         CommandScheduler.getInstance().run()
@@ -225,7 +225,7 @@ object Robot : LoggedRobot() {
 
     /** A model of robot, depending on where we're deployed to. */
     enum class Model {
-        SIMULATION, COMPETITION, PROTOTYPE
+        SIMULATION, COMPETITION
     }
 
     /** The model of this robot. */
@@ -234,7 +234,6 @@ object Robot : LoggedRobot() {
     } else {
         when (val key = Preferences.getString("Model", "competition")) {
             "competition" -> Model.COMPETITION
-            "prototype" -> Model.PROTOTYPE
             else -> throw AssertionError("Invalid model found in preferences: $key")
         }
     }
