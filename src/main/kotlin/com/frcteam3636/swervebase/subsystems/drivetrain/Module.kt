@@ -262,11 +262,11 @@ class SimSwerveModule(val sim: SwerveModuleSimulation) : SwerveModule {
 // circumference
 internal val WHEEL_RADIUS = 2.inches
 
-val DRIVING_GEAR_RATIO = TunerConstants.FrontRight!!.DriveMotorGearRatio
-val TURNING_GEAR_RATIO = TunerConstants.FrontRight!!.SteerMotorGearRatio
+const val DRIVING_GEAR_RATIO = TunerConstants.kDriveGearRatio
+const val TURNING_GEAR_RATIO = TunerConstants.kSteerGearRatio
 
-internal val DRIVING_PID_GAINS_TALON: PIDGains = TunerConstants.FrontRight!!.DriveMotorGains.pidGains
-internal val DRIVING_FF_GAINS_TALON: MotorFFGains = TunerConstants.FrontRight!!.DriveMotorGains.motorFFGains
+internal val DRIVING_PID_GAINS_TALON: PIDGains = TunerConstants.driveGains!!.pidGains
+internal val DRIVING_FF_GAINS_TALON: MotorFFGains = TunerConstants.driveGains!!.motorFFGains
 
-internal val TURNING_PID_GAINS: PIDGains = TunerConstants.FrontRight!!.SteerMotorGains.pidGains
-internal val TURNING_FF_GAINS: MotorFFGains = TunerConstants.FrontRight!!.SteerMotorGains.motorFFGains
+internal val TURNING_PID_GAINS: PIDGains = TunerConstants.steerGains!!.pidGains
+internal val TURNING_FF_GAINS: MotorFFGains = TunerConstants.steerGains!!.motorFFGains
