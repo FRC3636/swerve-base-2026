@@ -348,20 +348,10 @@ object Drivetrain : Subsystem {
         )
 
         // Chassis Control
-        val FREE_SPEED = 5.5.metersPerSecond
-        private val ROTATION_SPEED = 14.604.radiansPerSecond
+        val FREE_SPEED = 6.06.metersPerSecond
 
-        val ROTATION_PID_GAINS = PIDGains(3.0, 0.0, 0.4)
         val PATH_FOLLOWING_TRANSLATION_GAINS = PIDGains(5.0).toPPLib()
         val PATH_FOLLOWING_ROTATION_GAINS = PIDGains(5.0).toPPLib()
-
-        val DEFAULT_PATHING_CONSTRAINTS =
-            PathConstraints(
-                FREE_SPEED.baseUnitMagnitude() * 2,
-                (3.879 * 1.5) * 2.0,
-                ROTATION_SPEED.baseUnitMagnitude(),
-                24.961
-            )
 
         // CAN IDs
         val KRAKEN_MODULE_CAN_IDS =
