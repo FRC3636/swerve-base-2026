@@ -138,10 +138,10 @@ object Diagnostics {
     fun periodic() {
         reset()
 
-        val selectedAuto = Dashboard.autoChooser.selected
-        if (selectedAuto is InstantCommand) {
-            reportAlert(RobotAlert.DubiousAutoChoice)
-        }
+//        val selectedAuto = Dashboard.autoChooser.selected
+//        if (selectedAuto is InstantCommand) {
+//            reportAlert(RobotAlert.DubiousAutoChoice)
+//        }
 
         if (!Drivetrain.allPoseProvidersConnected) {
             reportAlert(RobotAlert.LimelightDisconnected)

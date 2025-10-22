@@ -6,7 +6,7 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d
 
 object Dashboard {
     val field = Field2d()
-    val autoChooser = AutoBuilder.buildAutoChooser()!!
+//    val autoChooser = AutoBuilder.buildAutoChooser()!!
 
     fun update() {
         field.robotPose = Drivetrain.estimatedPose

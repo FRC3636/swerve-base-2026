@@ -20,6 +20,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler
 import edu.wpi.first.wpilibj2.command.Commands
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine
 import org.ironmaple.simulation.SimulatedArena
 import org.littletonrobotics.junction.LogFileUtil
 import org.littletonrobotics.junction.LoggedRobot
@@ -158,6 +159,15 @@ object Robot : LoggedRobot() {
             println("Zeroing gyro.")
             Drivetrain.zeroGyro()
         }).ignoringDisable(true))
+
+
+        controller.leftBumper().onTrue(Commands.runOnce(SignalLogger::start))
+        controller.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop))
+
+        controller.y().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+        controller.a().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+        controller.b().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
+        controller.x().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
     }
 
     /** Add data to the driver station dashboard. */
@@ -207,7 +217,7 @@ object Robot : LoggedRobot() {
     override fun autonomousInit() {
         if (beforeFirstEnable)
             beforeFirstEnable = true
-        autoCommand = Dashboard.autoChooser.selected
+//        autoCommand = Dashboard.autoChooser.selected
         autoCommand?.schedule()
     }
 

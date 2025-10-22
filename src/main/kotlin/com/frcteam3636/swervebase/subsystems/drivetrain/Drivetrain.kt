@@ -117,20 +117,20 @@ object Drivetrain : Subsystem {
             LocalADStarAK()
         )
 
-        AutoBuilder.configure(
-            this::estimatedPose,
-            this::estimatedPose::set,
-            this::measuredChassisSpeeds,
-            this::desiredChassisSpeeds::set,
-            PPHolonomicDriveController(
-                PATH_FOLLOWING_TRANSLATION_GAINS,
-                PATH_FOLLOWING_ROTATION_GAINS
-            ),
-            RobotConfig.fromGUISettings(),
-            // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
-            { DriverStation.getAlliance() == Optional.of(DriverStation.Alliance.Red) },
-            this
-        )
+//        AutoBuilder.configure(
+//            this::estimatedPose,
+//            this::estimatedPose::set,
+//            this::measuredChassisSpeeds,
+//            this::desiredChassisSpeeds::set,
+//            PPHolonomicDriveController(
+//                PATH_FOLLOWING_TRANSLATION_GAINS,
+//                PATH_FOLLOWING_ROTATION_GAINS
+//            ),
+//            RobotConfig.fromGUISettings(),
+//            // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
+//            { DriverStation.getAlliance() == Optional.of(DriverStation.Alliance.Red) },
+//            this
+//        )
 
         if (Robot.model != Robot.Model.SIMULATION) {
             PathfindingCommand.warmupCommand().schedule()
@@ -332,12 +332,12 @@ object Drivetrain : Subsystem {
             ),
             frontRight = Corner(
                 Pose2d(
-                    Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                    Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
                 ), FRONT_RIGHT_MAGNET_OFFSET
             ),
             backLeft = Corner(
                 Pose2d(
-                    Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                    Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
                 ), BACK_LEFT_MAGNET_OFFSET
             ),
             backRight = Corner(
