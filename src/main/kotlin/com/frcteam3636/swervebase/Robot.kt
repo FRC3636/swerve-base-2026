@@ -78,6 +78,8 @@ object Robot : LoggedRobot() {
         configureDashboard()
 
 //        Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
+
+        statusSignals += Drivetrain.getStatusSignals()
     }
 
     /** Start logging or pull replay logs from a file */
@@ -194,10 +196,8 @@ object Robot : LoggedRobot() {
         Dashboard.update()
         reportDiagnostics()
 
-        statusSignals += Drivetrain.getStatusSignals()
         val refresh = BaseStatusSignal.refreshAll(*statusSignals.toTypedArray())
         didRefreshSucceed = refresh.isOK
-        statusSignals.clear()
 
         CommandScheduler.getInstance().run()
 
