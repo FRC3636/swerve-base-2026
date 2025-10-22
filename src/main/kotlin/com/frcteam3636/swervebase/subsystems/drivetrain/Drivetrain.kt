@@ -44,6 +44,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine
 import org.littletonrobotics.junction.Logger
 import java.util.*
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.jvm.optionals.getOrNull
 import kotlin.math.abs
 import kotlin.math.absoluteValue
@@ -51,7 +52,7 @@ import kotlin.math.pow
 import kotlin.math.withSign
 
 /** A singleton object representing the drivetrain. */
-object Drivetrain : Subsystem, Sendable {
+object Drivetrain : Subsystem {
     private val io = when (Robot.model) {
         Robot.Model.SIMULATION -> DrivetrainIOSim()
         Robot.Model.COMPETITION -> DrivetrainIOReal(
@@ -72,6 +73,8 @@ object Drivetrain : Subsystem, Sendable {
     }, {
         inputs.gyroVelocity
     })
+
+    val odometryLock = ReentrantLock()
 
     private val absolutePoseIOs = when (Robot.model) {
         Robot.Model.SIMULATION -> mapOf(
@@ -225,22 +228,6 @@ object Drivetrain : Subsystem, Sendable {
             )
         }
 
-    override fun initSendable(builder: SendableBuilder) {
-        builder.setSmartDashboardType(ElasticWidgets.SwerveDrive.widgetName)
-        builder.addDoubleProperty("Robot Angle", { estimatedPose.rotation.radians }, null)
-
-        builder.addDoubleProperty("Front Left Angle", { io.modules.frontLeft.state.angle.radians }, null)
-        builder.addDoubleProperty("Front Left Velocity", { io.modules.frontLeft.state.speedMetersPerSecond }, null)
-
-        builder.addDoubleProperty("Front Right Angle", { io.modules.frontRight.state.angle.radians }, null)
-        builder.addDoubleProperty("Front Right Velocity", { io.modules.frontRight.state.speedMetersPerSecond }, null)
-
-        builder.addDoubleProperty("Back Left Angle", { io.modules.backLeft.state.angle.radians }, null)
-        builder.addDoubleProperty("Back Left Velocity", { io.modules.backLeft.state.speedMetersPerSecond }, null)
-
-        builder.addDoubleProperty("Back Right Angle", { io.modules.backLeft.state.angle.radians }, null)
-        builder.addDoubleProperty("Back Right Velocity", { io.modules.backLeft.state.speedMetersPerSecond }, null)
-    }
 
     fun getStatusSignals(): MutableList<BaseStatusSignal> {
         return io.getStatusSignals()
@@ -334,20 +321,20 @@ object Drivetrain : Subsystem, Sendable {
 
         const val JOYSTICK_DEADBAND = 0.075
 
-        const val FRONT_RIGHT_MAGNET_OFFSET = 0.0
-        const val FRONT_LEFT_MAGNET_OFFSET = 0.0
-        const val BACK_RIGHT_MAGNET_OFFSET = 0.0
-        const val BACK_LEFT_MAGNET_OFFSET = 0.0
+        val FRONT_RIGHT_MAGNET_OFFSET = TunerConstants.FrontRight!!.EncoderOffset
+        val FRONT_LEFT_MAGNET_OFFSET = TunerConstants.FrontLeft!!.EncoderOffset
+        val BACK_RIGHT_MAGNET_OFFSET = TunerConstants.BackRight!!.EncoderOffset
+        val BACK_LEFT_MAGNET_OFFSET = TunerConstants.BackLeft!!.EncoderOffset
 
         val MODULE_POSITIONS = PerCorner(
             frontLeft = Corner(Pose2d(
                 Translation2d(ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
             ), FRONT_LEFT_MAGNET_OFFSET),
             frontRight = Corner(Pose2d(
-                Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(270.0)
+                Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
             ), FRONT_RIGHT_MAGNET_OFFSET),
             backLeft = Corner(Pose2d(
-                Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(90.0)
+                Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
             ), BACK_LEFT_MAGNET_OFFSET),
             backRight = Corner(Pose2d(
                 Translation2d(-ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)

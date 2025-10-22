@@ -21,6 +21,7 @@ import edu.wpi.first.units.measure.LinearVelocity
 import edu.wpi.first.units.measure.Voltage
 import org.ironmaple.simulation.drivesims.SwerveModuleSimulation
 import org.ironmaple.simulation.motorsims.SimulatedMotorController
+import java.util.Queue
 
 interface SwerveModule {
     // The current "state" of the swerve module.
@@ -61,7 +62,7 @@ class Mk5nSwerveModule(
 
     override fun characterize(voltage: Voltage) {
         drivingMotor.setVoltage(voltage)
-        turningMotor.position = -chassisAngle as Angle
+        turningMotor.position =  -chassisAngle.measure
     }
 
     override var desiredState: SwerveModuleState = SwerveModuleState(0.0, -chassisAngle)
@@ -109,30 +110,33 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
                 pidGains = DRIVING_PID_GAINS_TALON
                 motorFFGains = DRIVING_FF_GAINS_TALON
             }
-            CurrentLimits.apply {
-                SupplyCurrentLimit = DRIVING_CURRENT_LIMIT.inAmps()
-                SupplyCurrentLimitEnable = true
+//            CurrentLimits.apply {
+//                SupplyCurrentLimit = DRIVING_CURRENT_LIMIT.inAmps()
+//                SupplyCurrentLimitEnable = true
+//            }
+            Feedback.apply {
+                SensorToMechanismRatio = DRIVING_GEAR_RATIO
             }
         })
-
     }
 
     init {
-        BaseStatusSignal.setUpdateFrequencyForAll(100.0, inner.position, inner.velocity)
+        BaseStatusSignal.setUpdateFrequencyForAll(250.0, inner.position, inner.velocity)
         inner.optimizeBusUtilization()
+//        PhoenixOdometryThread.getInstance().registerSignal(inner.position.clone())
     }
 
     override val position: Distance
-        get() = inner.getPosition(false).value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
+        get() = inner.getPosition(false).value.toLinear(WHEEL_RADIUS)
 
     private var velocityControl = VelocityVoltage(0.0).apply {
         EnableFOC = true
     }
 
     override var velocity: LinearVelocity
-        get() = inner.getVelocity(false).value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO_TALON
+        get() = inner.getVelocity(false).value.toLinear(WHEEL_RADIUS)
         set(value) {
-            inner.setControl(velocityControl.withVelocity(value.toAngular(WHEEL_RADIUS) / DRIVING_GEAR_RATIO_TALON))
+            inner.setControl(velocityControl.withVelocity(value.toAngular(WHEEL_RADIUS)))
         }
 
     private val voltageControl = VoltageOut(0.0).apply {
@@ -160,14 +164,13 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
                 }
                 Feedback.apply {
                     FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder
-                    SensorToMechanismRatio = TURNING_CANCODER_TO_MECHANISM_RATIO
-                    RotorToSensorRatio = TURNING_MOTOR_TO_MECHANISM_RATIO
+                    RotorToSensorRatio = TURNING_GEAR_RATIO
                     FeedbackRemoteSensorID = encoderId.num
                 }
-                CurrentLimits.apply {
-                    StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
-                    StatorCurrentLimitEnable = true
-                }
+//                CurrentLimits.apply {
+//                    StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
+//                    StatorCurrentLimitEnable = true
+//                }
             }
         })
     }
@@ -180,6 +183,7 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
         }
         BaseStatusSignal.setUpdateFrequencyForAll(100.0, inner.position)
         inner.optimizeBusUtilization()
+//        PhoenixOdometryThread.getInstance().registerSignal(inner.position.clone())
     }
 
     private val positonControl = PositionVoltage(0.0).apply {
@@ -197,15 +201,14 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
     }
 }
 
-//
 class SimSwerveModule(val sim: SwerveModuleSimulation) : SwerveModule {
 
     private val driveMotor: SimulatedMotorController.GenericMotorController = sim.useGenericMotorControllerForDrive()
-        .withCurrentLimit(DRIVING_CURRENT_LIMIT)
+//        .withCurrentLimit(DRIVING_CURRENT_LIMIT)
 
     // reference to the simulated turn motor
     private val turnMotor: SimulatedMotorController.GenericMotorController = sim.useGenericControllerForSteer()
-        .withCurrentLimit(TURNING_CURRENT_LIMIT)
+//        .withCurrentLimit(TURNING_CURRENT_LIMIT)
 
     // TODO: figure out what the moment of inertia actually is and if it even matters
     private val drivingFeedforward = SimpleMotorFeedforward(DRIVING_FF_GAINS_TALON)
@@ -252,23 +255,13 @@ class SimSwerveModule(val sim: SwerveModuleSimulation) : SwerveModule {
 
 // take the known wheel diameter, divide it by two to get the radius, then get the
 // circumference
-internal val WHEEL_RADIUS = 1.5.inches
-internal val WHEEL_CIRCUMFERENCE = WHEEL_RADIUS * TAU
+internal val WHEEL_RADIUS = 2.inches
 
+val DRIVING_GEAR_RATIO = TunerConstants.FrontRight!!.DriveMotorGearRatio
+val TURNING_GEAR_RATIO = TunerConstants.FrontRight!!.SteerMotorGearRatio
 
-private const val DRIVING_MOTOR_PINION_TEETH = 14
+internal val DRIVING_PID_GAINS_TALON: PIDGains = TunerConstants.FrontRight!!.DriveMotorGains.pidGains
+internal val DRIVING_FF_GAINS_TALON: MotorFFGains = TunerConstants.FrontRight!!.DriveMotorGains.motorFFGains
 
-internal const val DRIVING_GEAR_RATIO_TALON = 1.0 / 3.56
-const val DRIVING_GEAR_RATIO = (45.0 * 22.0) / (DRIVING_MOTOR_PINION_TEETH * 15.0)
-
-const val TURNING_CANCODER_TO_MECHANISM_RATIO = 1.0
-const val TURNING_MOTOR_TO_MECHANISM_RATIO = 1.0
-
-internal val DRIVING_PID_GAINS_TALON: PIDGains = PIDGains(.19426, 0.0)
-internal val DRIVING_PID_GAINS_NEO: PIDGains = PIDGains(0.04, 0.0, 0.0)
-internal val DRIVING_FF_GAINS_TALON: MotorFFGains = MotorFFGains(0.22852, 0.1256, 0.022584)
-
-internal val TURNING_PID_GAINS: PIDGains = PIDGains(100.0, 0.0, 0.5)
-internal val TURNING_FF_GAINS: MotorFFGains = MotorFFGains(0.1, 2.66, 0.0)
-internal val DRIVING_CURRENT_LIMIT = 37.amps
-internal val TURNING_CURRENT_LIMIT = 60.amps
+internal val TURNING_PID_GAINS: PIDGains = TunerConstants.FrontRight!!.SteerMotorGains.pidGains
+internal val TURNING_FF_GAINS: MotorFFGains = TunerConstants.FrontRight!!.SteerMotorGains.motorFFGains

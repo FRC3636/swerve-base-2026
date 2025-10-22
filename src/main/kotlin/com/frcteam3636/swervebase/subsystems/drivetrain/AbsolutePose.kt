@@ -2,6 +2,8 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 
 //import org.photonvision.PhotonCamera
 //import org.photonvision.PhotonPoseEstimator
+import com.ctre.phoenix6.BaseStatusSignal
+import com.ctre.phoenix6.StatusSignal
 import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.utils.LimelightHelpers
 import com.frcteam3636.swervebase.utils.math.degrees
@@ -19,10 +21,12 @@ import edu.wpi.first.math.numbers.N1
 import edu.wpi.first.math.numbers.N3
 import edu.wpi.first.networktables.NetworkTableInstance
 import edu.wpi.first.units.Units.DegreesPerSecond
+import edu.wpi.first.units.measure.Angle
 import edu.wpi.first.units.measure.AngularVelocity
 import edu.wpi.first.units.measure.Time
 import edu.wpi.first.util.struct.Struct
 import edu.wpi.first.util.struct.StructSerializable
+import edu.wpi.first.wpilibj.RobotController
 import org.littletonrobotics.junction.LogTable
 import org.littletonrobotics.junction.inputs.LoggableInputs
 import org.photonvision.PhotonCamera
@@ -30,7 +34,12 @@ import org.photonvision.PhotonPoseEstimator
 import org.photonvision.simulation.PhotonCameraSim
 import org.photonvision.simulation.SimCameraProperties
 import java.nio.ByteBuffer
+import java.util.*
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
+
 
 class AbsolutePoseProviderInputs : LoggableInputs {
     /**
@@ -111,6 +120,7 @@ data class LimelightMeasurement(
 class LimelightPoseProvider(
     private val name: String,
     private val megaTagV2: LimelightAlgorithm.MegaTag2,
+    private val isLL4: Boolean
 ) : AbsolutePoseProvider {
     // References:
     // https://docs.limelightvision.io/docs/docs-limelight/tutorials/tutorial-swerve-pose-estimation
@@ -119,7 +129,7 @@ class LimelightPoseProvider(
     private var observedTags = intArrayOf()
 
     private var measurement: AbsolutePoseMeasurement? = null
-    private var mutex = Any()
+    private var lock = ReentrantLock()
 
     private var lastSeenHb: Double = 0.0
     private var hbSub = NetworkTableInstance.getDefault().getTable(name).getDoubleTopic("hb").subscribe(0.0)
@@ -131,10 +141,10 @@ class LimelightPoseProvider(
         thread(isDaemon = true) {
             while (true) {
                 val temp = updateCurrentMeasurement()
-                synchronized(mutex) {
-                    measurement = temp.poseMeasurement
-                    observedTags = temp.observedTags
-                }
+                lock.lock()
+                measurement = temp.poseMeasurement
+                observedTags = temp.observedTags
+                lock.unlock()
                 Thread.sleep(Robot.period.toLong())
             }
         }
@@ -143,8 +153,9 @@ class LimelightPoseProvider(
     private fun updateCurrentMeasurement(): LimelightMeasurement {
         val measurement = LimelightMeasurement()
 
-        if ((!Robot.beforeFirstEnable) && currentAlgorithm == LimelightAlgorithm.MegaTag)
+        if ((!Robot.beforeFirstEnable) && currentAlgorithm == LimelightAlgorithm.MegaTag) {
             currentAlgorithm = megaTagV2
+        }
 
         when (val algorithm = currentAlgorithm) {
             is LimelightAlgorithm.MegaTag ->
@@ -196,10 +207,10 @@ class LimelightPoseProvider(
     }
 
     override fun updateInputs(inputs: AbsolutePoseProviderInputs) {
-        synchronized(mutex) {
-            inputs.measurement = measurement
-            inputs.observedTags = observedTags
-        }
+        lock.lock()
+        inputs.measurement = measurement
+        inputs.observedTags = observedTags
+        lock.unlock()
 
         // We assume the camera has disconnected if there are no new updates for several ticks.
         val hb = hbSub.get()
@@ -231,6 +242,97 @@ class LimelightPoseProvider(
         private const val CONNECTED_TIMEOUT = 250.0
     }
 }
+//
+//class PhoenixOdometryThread : Thread("PhoenixOdometry") {
+//    init {
+//        isDaemon = true
+//    }
+//
+//    private val timestampQueues: MutableList<Queue<Double>> = ArrayList<Queue<Double>>()
+//    private val signalsLock: Lock = ReentrantLock() // Prevents conflicts when registering signals
+//    private var phoenixSignals: Array<BaseStatusSignal> = emptyArray() // Phoenix API does not accept a mutable list
+//    private val phoenixQueues = ArrayList<Queue<Double>>()
+//
+//    override fun start() {
+//        if (!timestampQueues.isEmpty()) {
+//            super.start()
+//        }
+//    }
+//
+//    fun registerSignal(signal: StatusSignal<Angle>): Queue<Double> {
+//        val queue: Queue<Double> = ArrayBlockingQueue(20)
+//
+//        signalsLock.lock()
+//        Drivetrain.odometryLock.lock()
+//        try {
+//            val newSignals = Array(phoenixSignals.size + 1) { i ->
+//                if (i < phoenixSignals.size) phoenixSignals[i] else signal
+//            }
+//            phoenixSignals = newSignals
+//            phoenixQueues.add(queue)
+//        } finally {
+//            signalsLock.unlock()
+//            Drivetrain.odometryLock.unlock()
+//        }
+//
+//        return queue
+//    }
+//
+//    fun makeTimestampQueue(): Queue<Double> {
+//        val queue = ArrayBlockingQueue<Double>(20)
+//        Drivetrain.odometryLock.lock()
+//        try {
+//            timestampQueues.add(queue)
+//        } finally {
+//            Drivetrain.odometryLock.unlock()
+//        }
+//        return queue
+//    }
+//
+//    override fun run() {
+//        while (true) {
+//            signalsLock.lock()
+//            try {
+//                if (!phoenixSignals.isEmpty()) {
+//                    BaseStatusSignal.waitForAll(2.0 / 250.0, *phoenixSignals)
+//                }
+//            } catch (e: InterruptedException) {
+//                e.printStackTrace()
+//            } finally {
+//                signalsLock.unlock()
+//            }
+//
+//            Drivetrain.odometryLock.lock()
+//            try {
+//                var timestamp = RobotController.getFPGATime() / 1e6
+//                var latency = 0.0
+//                for (signal in phoenixSignals) {
+//                    latency += signal.timestamp.latency
+//                }
+//                if (!phoenixSignals.isEmpty())
+//                    timestamp -= latency / phoenixSignals.size
+//
+//                for (i in 0 ..<phoenixSignals.size) {
+//                    phoenixQueues[i].offer(phoenixSignals[i].valueAsDouble)
+//                }
+//
+//                for (i in 0..<timestampQueues.size) {
+//                    timestampQueues[i].offer(timestamp)
+//                }
+//            } finally {
+//                Drivetrain.odometryLock.unlock()
+//            }
+//        }
+//    }
+//
+//    companion object {
+//        private val instance = PhoenixOdometryThread()
+//
+//        fun getInstance(): PhoenixOdometryThread {
+//            return instance
+//        }
+//    }
+//}
 
 @Suppress("unused")
 class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : AbsolutePoseProvider {
