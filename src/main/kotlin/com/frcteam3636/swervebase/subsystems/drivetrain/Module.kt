@@ -75,7 +75,7 @@ class Mk5nSwerveModule(
             )
 
             drivingMotor.velocity = corrected.speed
-            turningMotor.position = corrected.angle as Angle
+            turningMotor.position = corrected.angle.measure
 
 
             field = corrected
