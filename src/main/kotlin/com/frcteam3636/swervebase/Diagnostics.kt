@@ -4,12 +4,9 @@ import com.ctre.phoenix6.CANBus
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.swervebase.subsystems.drivetrain.Gyro
 import com.frcteam3636.swervebase.utils.cachedStatus
-import com.frcteam3636.swervebase.utils.math.hasElapsed
-import com.frcteam3636.swervebase.utils.math.seconds
 import edu.wpi.first.wpilibj.Alert
 import edu.wpi.first.wpilibj.Alert.AlertType
 import edu.wpi.first.wpilibj.GenericHID
-import edu.wpi.first.wpilibj.Timer
 import edu.wpi.first.wpilibj2.command.InstantCommand
 import java.net.InetAddress
 import kotlin.concurrent.thread
@@ -25,7 +22,9 @@ object Diagnostics {
         val alert = Alert(message, alertType)
 
         object GyroDisconnected : RobotAlert("Failed to connect to gyro, vision and odometry will likely not function.")
-        object LimelightDisconnected : RobotAlert("Failed to connect to one or more LimeLights, vision will be impaired.")
+        object LimelightDisconnected :
+            RobotAlert("Failed to connect to one or more LimeLights, vision will be impaired.")
+
         object DubiousAutoChoice :
             RobotAlert(
                 "There is no auto selected. Are you absolutely sure you **do not** want to run an auto?",

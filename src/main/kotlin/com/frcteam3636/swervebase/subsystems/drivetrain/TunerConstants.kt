@@ -1,6 +1,5 @@
 package com.frcteam3636.swervebase.subsystems.drivetrain
 
-import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.configs.*
 import com.ctre.phoenix6.hardware.CANcoder
 import com.ctre.phoenix6.hardware.TalonFX

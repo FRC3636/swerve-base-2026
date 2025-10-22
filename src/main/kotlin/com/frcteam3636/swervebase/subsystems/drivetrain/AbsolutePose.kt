@@ -2,8 +2,6 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 
 //import org.photonvision.PhotonCamera
 //import org.photonvision.PhotonPoseEstimator
-import com.ctre.phoenix6.BaseStatusSignal
-import com.ctre.phoenix6.StatusSignal
 import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.utils.LimelightHelpers
 import com.frcteam3636.swervebase.utils.math.degrees
@@ -21,12 +19,10 @@ import edu.wpi.first.math.numbers.N1
 import edu.wpi.first.math.numbers.N3
 import edu.wpi.first.networktables.NetworkTableInstance
 import edu.wpi.first.units.Units.DegreesPerSecond
-import edu.wpi.first.units.measure.Angle
 import edu.wpi.first.units.measure.AngularVelocity
 import edu.wpi.first.units.measure.Time
 import edu.wpi.first.util.struct.Struct
 import edu.wpi.first.util.struct.StructSerializable
-import edu.wpi.first.wpilibj.RobotController
 import org.littletonrobotics.junction.LogTable
 import org.littletonrobotics.junction.inputs.LoggableInputs
 import org.photonvision.PhotonCamera
@@ -34,9 +30,6 @@ import org.photonvision.PhotonPoseEstimator
 import org.photonvision.simulation.PhotonCameraSim
 import org.photonvision.simulation.SimCameraProperties
 import java.nio.ByteBuffer
-import java.util.*
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.thread
 

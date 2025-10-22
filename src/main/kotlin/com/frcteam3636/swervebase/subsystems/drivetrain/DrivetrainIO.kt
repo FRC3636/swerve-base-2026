@@ -8,8 +8,8 @@ import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BUMPER_LENGTH
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BUMPER_WIDTH
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
-import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROBOT_WIDTH
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROBOT_LENGTH
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROBOT_WIDTH
 import com.frcteam3636.swervebase.utils.math.degreesPerSecond
 import com.frcteam3636.swervebase.utils.math.kilogramSquareMeters
 import com.frcteam3636.swervebase.utils.math.volts

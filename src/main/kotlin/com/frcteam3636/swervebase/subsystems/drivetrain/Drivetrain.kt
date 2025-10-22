@@ -10,32 +10,30 @@ import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.JOY
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_ROTATION_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_TRANSLATION_GAINS
-import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_PID_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_SENSITIVITY
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.TRANSLATION_SENSITIVITY
-import com.frcteam3636.swervebase.utils.ElasticWidgets
 import com.frcteam3636.swervebase.utils.fieldRelativeTranslation2d
 import com.frcteam3636.swervebase.utils.math.*
-import com.frcteam3636.swervebase.utils.swerve.*
+import com.frcteam3636.swervebase.utils.swerve.Corner
+import com.frcteam3636.swervebase.utils.swerve.PerCorner
+import com.frcteam3636.swervebase.utils.swerve.cornerStatesToChassisSpeeds
+import com.frcteam3636.swervebase.utils.swerve.toCornerSwerveModuleStates
 import com.frcteam3636.swervebase.utils.translation2d
 import com.pathplanner.lib.auto.AutoBuilder
 import com.pathplanner.lib.commands.PathfindingCommand
-import com.pathplanner.lib.config.ModuleConfig
 import com.pathplanner.lib.config.RobotConfig
 import com.pathplanner.lib.controllers.PPHolonomicDriveController
 import com.pathplanner.lib.path.PathConstraints
 import com.pathplanner.lib.pathfinding.Pathfinding
 import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
-import edu.wpi.first.math.geometry.*
+import edu.wpi.first.math.geometry.Pose2d
+import edu.wpi.first.math.geometry.Rotation2d
+import edu.wpi.first.math.geometry.Transform3d
+import edu.wpi.first.math.geometry.Translation2d
 import edu.wpi.first.math.kinematics.ChassisSpeeds
 import edu.wpi.first.math.kinematics.SwerveDriveKinematics
 import edu.wpi.first.math.kinematics.SwerveModuleState
-import edu.wpi.first.math.system.plant.DCMotor
-import edu.wpi.first.math.util.Units
-import edu.wpi.first.networktables.NetworkTableInstance
-import edu.wpi.first.util.sendable.Sendable
-import edu.wpi.first.util.sendable.SendableBuilder
 import edu.wpi.first.wpilibj.DriverStation
 import edu.wpi.first.wpilibj.Joystick
 import edu.wpi.first.wpilibj2.command.Command
@@ -327,18 +325,26 @@ object Drivetrain : Subsystem {
         val BACK_LEFT_MAGNET_OFFSET = TunerConstants.BackLeft!!.EncoderOffset
 
         val MODULE_POSITIONS = PerCorner(
-            frontLeft = Corner(Pose2d(
-                Translation2d(ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
-            ), FRONT_LEFT_MAGNET_OFFSET),
-            frontRight = Corner(Pose2d(
-                Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
-            ), FRONT_RIGHT_MAGNET_OFFSET),
-            backLeft = Corner(Pose2d(
-                Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
-            ), BACK_LEFT_MAGNET_OFFSET),
-            backRight = Corner(Pose2d(
-                Translation2d(-ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
-            ), BACK_RIGHT_MAGNET_OFFSET),
+            frontLeft = Corner(
+                Pose2d(
+                    Translation2d(ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                ), FRONT_LEFT_MAGNET_OFFSET
+            ),
+            frontRight = Corner(
+                Pose2d(
+                    Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                ), FRONT_RIGHT_MAGNET_OFFSET
+            ),
+            backLeft = Corner(
+                Pose2d(
+                    Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                ), BACK_LEFT_MAGNET_OFFSET
+            ),
+            backRight = Corner(
+                Pose2d(
+                    Translation2d(-ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                ), BACK_RIGHT_MAGNET_OFFSET
+            ),
         )
 
         // Chassis Control
@@ -387,6 +393,7 @@ object Drivetrain : Subsystem {
             )
 
         /** A position with the modules radiating outwards from the center of the robot, preventing movement. */
-        val BRAKE_POSITION = MODULE_POSITIONS.map { module -> SwerveModuleState(0.0, module.position.translation.angle) }
+        val BRAKE_POSITION =
+            MODULE_POSITIONS.map { module -> SwerveModuleState(0.0, module.position.translation.angle) }
     }
 }

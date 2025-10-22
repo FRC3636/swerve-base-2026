@@ -8,7 +8,9 @@ import com.ctre.phoenix6.controls.VelocityVoltage
 import com.ctre.phoenix6.controls.VoltageOut
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue
 import com.ctre.phoenix6.signals.NeutralModeValue
-import com.frcteam3636.swervebase.*
+import com.frcteam3636.swervebase.CANcoder
+import com.frcteam3636.swervebase.CTREDeviceId
+import com.frcteam3636.swervebase.TalonFX
 import com.frcteam3636.swervebase.utils.math.*
 import com.frcteam3636.swervebase.utils.swerve.speed
 import edu.wpi.first.math.geometry.Rotation2d
@@ -21,7 +23,6 @@ import edu.wpi.first.units.measure.LinearVelocity
 import edu.wpi.first.units.measure.Voltage
 import org.ironmaple.simulation.drivesims.SwerveModuleSimulation
 import org.ironmaple.simulation.motorsims.SimulatedMotorController
-import java.util.Queue
 
 interface SwerveModule {
     // The current "state" of the swerve module.
@@ -42,7 +43,10 @@ interface SwerveModule {
     // and magnitude equal to the total signed distance traveled by the wheel.
     val position: SwerveModulePosition
 
-    fun getSignals(): Array<BaseStatusSignal> { return arrayOf() }
+    fun getSignals(): Array<BaseStatusSignal> {
+        return arrayOf()
+    }
+
     fun periodic() {}
     fun characterize(voltage: Voltage)
 }
@@ -52,7 +56,8 @@ class Mk5nSwerveModule(
 ) : SwerveModule {
     override val state: SwerveModuleState
         get() = SwerveModuleState(
-            drivingMotor.velocity.inMetersPerSecond(), Rotation2d.fromRadians(turningMotor.position.inRadians()) + chassisAngle
+            drivingMotor.velocity.inMetersPerSecond(),
+            Rotation2d.fromRadians(turningMotor.position.inRadians()) + chassisAngle
         )
 
     override val position: SwerveModulePosition
@@ -62,7 +67,7 @@ class Mk5nSwerveModule(
 
     override fun characterize(voltage: Voltage) {
         drivingMotor.setVoltage(voltage)
-        turningMotor.position =  -chassisAngle.measure
+        turningMotor.position = -chassisAngle.measure
     }
 
     override var desiredState: SwerveModuleState = SwerveModuleState(0.0, -chassisAngle)
