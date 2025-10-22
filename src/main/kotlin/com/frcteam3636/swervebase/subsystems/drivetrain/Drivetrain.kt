@@ -311,11 +311,11 @@ object Drivetrain : Subsystem {
         /** Unit: Rotations per second */
         const val ROTATION_SENSITIVITY = 0.8
 
-        val ROBOT_LENGTH = 30.inches
-        val ROBOT_WIDTH = 28.inches
+        val ROBOT_LENGTH = 25.5.inches
+        val ROBOT_WIDTH = 25.5.inches
 
-        val BUMPER_WIDTH = 33.5.inches
-        val BUMPER_LENGTH = 35.5.inches
+        val BUMPER_WIDTH = 30.inches
+        val BUMPER_LENGTH = 30.inches
 
         const val JOYSTICK_DEADBAND = 0.075
 
