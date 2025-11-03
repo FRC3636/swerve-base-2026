@@ -13,7 +13,10 @@ import com.pathplanner.lib.util.PathPlannerLogging
 import edu.wpi.first.hal.FRCNetComm.tInstances
 import edu.wpi.first.hal.FRCNetComm.tResourceType
 import edu.wpi.first.hal.HAL
-import edu.wpi.first.wpilibj.*
+import edu.wpi.first.wpilibj.Alert
+import edu.wpi.first.wpilibj.DriverStation
+import edu.wpi.first.wpilibj.PowerDistribution
+import edu.wpi.first.wpilibj.Preferences
 import edu.wpi.first.wpilibj.util.WPILibVersion
 import edu.wpi.first.wpilibj2.command.Command
 import edu.wpi.first.wpilibj2.command.CommandScheduler
@@ -28,6 +31,7 @@ import org.littletonrobotics.junction.Logger
 import org.littletonrobotics.junction.networktables.NT4Publisher
 import org.littletonrobotics.junction.wpilog.WPILOGReader
 import org.littletonrobotics.junction.wpilog.WPILOGWriter
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
@@ -49,7 +53,10 @@ object Robot : LoggedRobot() {
     private val joystickRight = CommandJoystick(1)
 
     @Suppress("unused")
-    private val joystickDev = Joystick(3)
+    private val joystickDev = CommandJoystick(3)
+
+    @Suppress("unused")
+    private val controllerDev = CommandXboxController(4)
 
     private var autoCommand: Command? = null
 
@@ -59,7 +66,7 @@ object Robot : LoggedRobot() {
 
     private val statusSignals = mutableListOf<BaseStatusSignal>()
 
-    var beforeFirstEnable = true
+    val odometryLock = ReentrantLock()
 
     override fun robotInit() {
         // Report the use of the Kotlin Language for "FRC Usage Report" statistics
@@ -161,13 +168,28 @@ object Robot : LoggedRobot() {
         }).ignoringDisable(true))
 
 
-        controller.leftBumper().onTrue(Commands.runOnce(SignalLogger::start))
-        controller.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop))
+        if (Preferences.getBoolean("DeveloperMode", false)) {
+            controllerDev.leftBumper().onTrue(Commands.runOnce(SignalLogger::start))
+            controllerDev.rightBumper().onTrue(Commands.runOnce(SignalLogger::stop))
 
-        controller.y().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
-        controller.a().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
-        controller.b().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward));
-        controller.x().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse));
+            controllerDev.y().whileTrue(Drivetrain.sysIdQuasistaticSpin(SysIdRoutine.Direction.kForward))
+            controllerDev.a().whileTrue(Drivetrain.sysIdQuasistaticSpin(SysIdRoutine.Direction.kReverse))
+            controllerDev.b().whileTrue(Drivetrain.sysIdDynamicSpin(SysIdRoutine.Direction.kForward))
+            controllerDev.x().whileTrue(Drivetrain.sysIdDynamicSpin(SysIdRoutine.Direction.kReverse))
+
+            controllerDev.povUp().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kForward))
+            controllerDev.povDown().whileTrue(Drivetrain.sysIdQuasistatic(SysIdRoutine.Direction.kReverse))
+            controllerDev.povRight().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kForward))
+            controllerDev.povLeft().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse))
+
+            joystickDev.button(1).whileTrue(Drivetrain.calculateWheelRadius())
+
+            joystickDev.button(2).onTrue(
+                Commands.runOnce({
+                    Drivetrain.zeroFull()
+                })
+            )
+        }
     }
 
     /** Add data to the driver station dashboard. */
@@ -215,15 +237,15 @@ object Robot : LoggedRobot() {
     }
 
     override fun autonomousInit() {
-        if (beforeFirstEnable)
-            beforeFirstEnable = true
+        if (!RobotState.beforeFirstEnable)
+            RobotState.beforeFirstEnable = true
 //        autoCommand = Dashboard.autoChooser.selected
         autoCommand?.schedule()
     }
 
     override fun teleopInit() {
-        if (beforeFirstEnable)
-            beforeFirstEnable = true
+        if (!RobotState.beforeFirstEnable)
+            RobotState.beforeFirstEnable = true
         autoCommand?.cancel()
     }
 

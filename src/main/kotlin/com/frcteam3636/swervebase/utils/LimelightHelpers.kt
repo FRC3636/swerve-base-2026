@@ -1,7 +1,5 @@
-//LimelightHelpers v1.10 (REQUIRES LLOS 2024.9.1 OR LATER)
-
 @file:Suppress("unused")
-
+//LimelightHelpers v1.12 (REQUIRES LLOS 2025.0 OR LATER)
 package com.frcteam3636.swervebase.utils
 
 import com.fasterxml.jackson.annotation.JsonFormat
@@ -147,7 +145,6 @@ object LimelightHelpers {
         val tagSpan = extractArrayEntry(poseArray, 8)
         val tagDist = extractArrayEntry(poseArray, 9)
         val tagArea = extractArrayEntry(poseArray, 10)
-
 
         // Convert server timestamp from microseconds to seconds and adjust for latency
         val adjustedTimestamp = (timestamp / 1000000.0) - (latency / 1000.0)
@@ -376,8 +373,6 @@ object LimelightHelpers {
         return null
     }
 
-    /////
-    /////
     /**
      * Does the Limelight have a valid target?
      * @param limelightName Name of the Limelight camera ("" for default)
@@ -621,8 +616,6 @@ object LimelightHelpers {
         return getLimelightNTStringArray(limelightName, "rawbarcodes")
     }
 
-    /////
-    /////
     fun getBotPose3d(limelightName: String?): Pose3d {
         val poseArray = getLimelightNTDoubleArray(limelightName, "botpose")
         return toPose3D(poseArray)
@@ -775,9 +768,22 @@ object LimelightHelpers {
         return toPose2D(result)
     }
 
+    /**
+     * Gets the current IMU data from NetworkTables.
+     * IMU data is formatted as [robotYaw, Roll, Pitch, Yaw, gyroX, gyroY, gyroZ, accelX, accelY, accelZ].
+     * Returns all zeros if data is invalid or unavailable.
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @return IMUData object containing all current IMU data
+     */
+    fun getIMUData(limelightName: String?): IMUData {
+        val imuData = getLimelightNTDoubleArray(limelightName, "imu")
+        if (imuData.size < 10) {
+            return IMUData() // Returns object with all zeros
+        }
+        return IMUData(imuData)
+    }
 
-    /////
-    /////
     fun setPipelineIndex(limelightName: String?, pipelineIndex: Int) {
         setLimelightNTDouble(limelightName, "pipeline", pipelineIndex.toDouble())
     }
@@ -906,6 +912,37 @@ object LimelightHelpers {
     }
 
     /**
+     * Configures the IMU mode for MegaTag2 Localization
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @param mode IMU mode.
+     */
+    fun SetIMUMode(limelightName: String, mode: Int) {
+        setLimelightNTDouble(limelightName, "imumode_set", mode.toDouble())
+    }
+
+    /**
+     * Configures the complementary filter alpha value for IMU Assist Modes (Modes 3 and 4)
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @param alpha Defaults to .001. Higher values will cause the internal IMU to converge onto the assist source more rapidly.
+     */
+    fun SetIMUAssistAlpha(limelightName: String, alpha: Double) {
+        setLimelightNTDouble(limelightName, "imuassistalpha_set", alpha)
+    }
+
+
+    /**
+     * Configures the throttle value. Set to 100-200 while disabled to reduce thermal output/temperature.
+     *
+     * @param limelightName Name/identifier of the Limelight
+     * @param throttle Defaults to 0. Your Limelgiht will process one frame after skipping <throttle> frames.
+    </throttle> */
+    fun SetThrottle(limelightName: String, throttle: Int) {
+        setLimelightNTDouble(limelightName, "throttle_set", throttle.toDouble())
+    }
+
+    /**
      * Sets the 3D point-of-interest offset for the current fiducial pipeline.
      * https://docs.limelightvision.io/docs/docs-limelight/pipeline-apriltag/apriltag-3d#point-of-interest-tracking
      *
@@ -996,8 +1033,6 @@ object LimelightHelpers {
         setLimelightNTDoubleArray(limelightName, "camerapose_robotspace_set", entries)
     }
 
-    /////
-    /////
     fun setPythonScriptData(limelightName: String?, outgoingPythonData: DoubleArray?) {
         setLimelightNTDoubleArray(limelightName, "llrobot", outgoingPythonData)
     }
@@ -1006,8 +1041,6 @@ object LimelightHelpers {
         return getLimelightNTDoubleArray(limelightName, "llpython")
     }
 
-    /////
-    /////
     /**
      * Asynchronously take snapshot.
      */
@@ -1054,10 +1087,7 @@ object LimelightHelpers {
         }
 
         try {
-            results = mapper!!.readValue(
-                getJSONDump(limelightName),
-                LimelightResults::class.java
-            )
+            results = mapper!!.readValue(getJSONDump(limelightName), LimelightResults::class.java)
         } catch (e: JsonProcessingException) {
             results.error = "lljson error: " + e.message
         }
@@ -1534,6 +1564,39 @@ object LimelightHelpers {
             this.avgTagArea = avgTagArea
             this.rawFiducials = rawFiducials
             this.isMegaTag2 = isMegaTag2
+        }
+    }
+
+    /**
+     * Encapsulates the state of an internal Limelight IMU.
+     */
+    class IMUData {
+        var robotYaw: Double = 0.0
+        var Roll: Double = 0.0
+        var Pitch: Double = 0.0
+        var Yaw: Double = 0.0
+        var gyroX: Double = 0.0
+        var gyroY: Double = 0.0
+        var gyroZ: Double = 0.0
+        var accelX: Double = 0.0
+        var accelY: Double = 0.0
+        var accelZ: Double = 0.0
+
+        constructor()
+
+        constructor(imuData: DoubleArray?) {
+            if (imuData != null && imuData.size >= 10) {
+                this.robotYaw = imuData[0]
+                this.Roll = imuData[1]
+                this.Pitch = imuData[2]
+                this.Yaw = imuData[3]
+                this.gyroX = imuData[4]
+                this.gyroY = imuData[5]
+                this.gyroZ = imuData[6]
+                this.accelX = imuData[7]
+                this.accelY = imuData[8]
+                this.accelZ = imuData[9]
+            }
         }
     }
 }

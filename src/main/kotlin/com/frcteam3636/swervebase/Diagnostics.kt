@@ -7,7 +7,6 @@ import com.frcteam3636.swervebase.utils.cachedStatus
 import edu.wpi.first.wpilibj.Alert
 import edu.wpi.first.wpilibj.Alert.AlertType
 import edu.wpi.first.wpilibj.GenericHID
-import edu.wpi.first.wpilibj2.command.InstantCommand
 import java.net.InetAddress
 import kotlin.concurrent.thread
 
@@ -110,28 +109,6 @@ object Diagnostics {
 
         if (!isExpectedType) {
             reportAlert(RobotAlert.HIDDeviceIsWrongType)
-        }
-    }
-
-    private val limelightsSync = Any()
-    private var limelightsConnected = false
-    fun reportLimelightsInBackground(names: Array<String>) {
-        thread {
-            while (true) {
-                val allReachable = names.asIterable().all { name ->
-                    try {
-                        InetAddress.getByName("$name.local").isReachable(1000)
-                    } catch (_: Exception) {
-                        false
-                    }
-                }
-
-                synchronized(limelightsSync) {
-                    limelightsConnected = allReachable
-                }
-
-                Thread.sleep(5_000)
-            }
         }
     }
 

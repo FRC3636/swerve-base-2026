@@ -53,7 +53,9 @@ object TunerConstants {
 
     // The stator current at which the wheels start to slip;
     // This needs to be tuned to your individual robot
-    private val kSlipCurrent: Current = Units.Amps.of(120.0)
+    val kSlipCurrent: Current = Units.Amps.of(120.0)
+
+    val kSteerCurrentLimit: Current = Units.Amps.of(60.0)
 
     // Initial configs for the drive and steer motors and the azimuth encoder; these cannot be null.
     // Some configs will be overwritten; check the `with*InitialConfigs()` API documentation.
@@ -62,17 +64,14 @@ object TunerConstants {
         .withCurrentLimits(
             CurrentLimitsConfigs() // Swerve azimuth does not require much torque output, so we can set a relatively low
                 // stator current limit to help avoid brownouts without impacting performance.
-                .withStatorCurrentLimit(Units.Amps.of(60.0))
+                .withStatorCurrentLimit(kSteerCurrentLimit)
                 .withStatorCurrentLimitEnable(true)
         )
     private val encoderInitialConfigs = CANcoderConfiguration()
 
-    // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
-    private val pigeonConfigs: Pigeon2Configuration? = null
-
     // Theoretical free speed (m/s) at 12 V applied output;
     // This needs to be tuned to your individual robot
-    val kSpeedAt12Volts: LinearVelocity = Units.MetersPerSecond.of(6.06)
+    val kSpeedAt12Volts: LinearVelocity = Units.FeetPerSecond.of(19.2)
 
     // Every 1 rotation of the azimuth results in kCoupleRatio drive motor turns;
     // This may need to be tuned to your individual robot

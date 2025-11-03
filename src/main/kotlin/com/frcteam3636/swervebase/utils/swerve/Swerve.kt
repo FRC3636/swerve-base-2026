@@ -28,6 +28,16 @@ data class PerCorner<T>(val frontLeft: T, val frontRight: T, val backLeft: T, va
             DrivetrainCorner.FRONT_RIGHT -> frontRight
         }
 
+    // someone please give me a better way to do this
+    operator fun get(index: Int): T =
+        when (index) {
+            0 -> frontLeft
+            1 -> frontRight
+            2 -> backLeft
+            3 -> backRight
+            else -> throw IndexOutOfBoundsException()
+        }
+
     fun <U> map(block: (T) -> U): PerCorner<U> = mapWithCorner { x, _ -> block(x) }
     fun <U> mapWithCorner(block: (T, DrivetrainCorner) -> U): PerCorner<U> = generate { corner ->
         block(this[corner], corner)
@@ -77,6 +87,13 @@ fun SwerveDriveKinematics.cornerStatesToChassisSpeeds(
 
 fun SwerveDriveKinematics(translations: PerCorner<Translation2d>) =
     SwerveDriveKinematics(*translations.toList().toTypedArray())
+
+inline fun <T> PerCorner<T>.forEachCornerIndexed(block: (corner: DrivetrainCorner, index: Int, value: T) -> Unit) {
+    block(DrivetrainCorner.FRONT_LEFT, 0, frontLeft)
+    block(DrivetrainCorner.FRONT_RIGHT, 1, frontRight)
+    block(DrivetrainCorner.BACK_LEFT, 2, backLeft)
+    block(DrivetrainCorner.BACK_RIGHT, 3, backRight)
+}
 
 /** The speed of the swerve module. */
 var SwerveModuleState.speed: LinearVelocity
