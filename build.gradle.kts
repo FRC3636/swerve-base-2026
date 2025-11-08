@@ -123,7 +123,6 @@ deploy {
                 jvmArgs.add("-XX:+AlwaysPreTouch")
 
                 // Enable asserts
-                jvmArgs.add("-ea")        
                 jvmArgs.add("-ea")
                 setJarTask(tasks.jar)
             }
