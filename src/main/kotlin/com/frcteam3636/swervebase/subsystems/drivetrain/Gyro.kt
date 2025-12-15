@@ -14,6 +14,7 @@ import org.littletonrobotics.junction.Logger
 import java.util.*
 import kotlin.math.sign
 
+
 interface Gyro {
     /**
      * The current rotation of the robot.
@@ -32,16 +33,16 @@ interface Gyro {
     var odometryYawPositions: DoubleArray
     var odometryYawTimestamps: DoubleArray
 
+    val signals: Array<BaseStatusSignal>
+        get() = emptyArray()
+
     fun periodic() {}
-    fun getStatusSignals(): Array<BaseStatusSignal> {
-        return arrayOf()
-    }
 }
 
-@Suppress("unused")
+@Suppress("unused") // and hopefully it stays that way
 class GyroNavX(private val ahrs: AHRS) : Gyro {
 
-    private var offset = Rotation2d()
+    private var offset = Rotation2d.kZero
 
     init {
         Logger.recordOutput("NavXGyro/Offset", offset)
@@ -78,7 +79,7 @@ class GyroPigeon(private val pigeon: Pigeon2) : Gyro {
             yawSignal
         )
         BaseStatusSignal.setUpdateFrequencyForAll(
-            50.0,
+            100.0,
             pitchSignal,
             rollSignal,
             angularVelocitySignal
@@ -104,14 +105,13 @@ class GyroPigeon(private val pigeon: Pigeon2) : Gyro {
     override val connected
         get() = yawSignal.status.isOK
 
-    override fun getStatusSignals(): Array<BaseStatusSignal> {
-        return arrayOf(
+    override val signals: Array<BaseStatusSignal>
+        get() = arrayOf(
             yawSignal,
             pitchSignal,
             rollSignal,
             angularVelocitySignal
         )
-    }
 
     override fun periodic() {
         odometryYawTimestamps = yawTimestampQueue.toDoubleArray()
@@ -122,7 +122,7 @@ class GyroPigeon(private val pigeon: Pigeon2) : Gyro {
 }
 
 class GyroSim(private val modules: PerCorner<SwerveModule>) : Gyro {
-    override var rotation = Rotation2d()
+    override var rotation: Rotation2d = Rotation2d.kZero
     override var velocity: AngularVelocity = 0.radiansPerSecond
     override val connected = true
     override var odometryYawPositions: DoubleArray = doubleArrayOf()

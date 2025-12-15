@@ -1,5 +1,7 @@
 package com.frcteam3636.swervebase.utils.swerve
 
+import com.frcteam3636.swervebase.utils.math.celsius
+import com.frcteam3636.swervebase.utils.math.inCelsius
 import com.frcteam3636.swervebase.utils.math.inMetersPerSecond
 import com.frcteam3636.swervebase.utils.math.metersPerSecond
 import com.frcteam3636.swervebase.utils.math.radiansPerSecond
@@ -10,6 +12,10 @@ import edu.wpi.first.math.kinematics.SwerveDriveKinematics
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.units.measure.AngularVelocity
 import edu.wpi.first.units.measure.LinearVelocity
+import edu.wpi.first.units.measure.Temperature
+import edu.wpi.first.util.struct.Struct
+import edu.wpi.first.util.struct.StructSerializable
+import java.nio.ByteBuffer
 
 enum class DrivetrainCorner {
     FRONT_LEFT,
@@ -18,7 +24,7 @@ enum class DrivetrainCorner {
     BACK_RIGHT
 }
 
-data class PerCorner<T>(val frontLeft: T, val frontRight: T, val backLeft: T, val backRight: T) :
+data class PerCorner<T>(var frontLeft: T, var frontRight: T, var backLeft: T, var backRight: T) :
     Collection<T> {
     operator fun get(corner: DrivetrainCorner): T =
         when (corner) {
@@ -37,6 +43,14 @@ data class PerCorner<T>(val frontLeft: T, val frontRight: T, val backLeft: T, va
             3 -> backRight
             else -> throw IndexOutOfBoundsException()
         }
+
+    operator fun set(index: Int, value: T) = when (index) {
+        0 -> frontLeft = value
+        1 -> frontRight = value
+        2 -> backLeft = value
+        3 -> backRight = value
+        else -> throw IndexOutOfBoundsException()
+    }
 
     fun <U> map(block: (T) -> U): PerCorner<U> = mapWithCorner { x, _ -> block(x) }
     fun <U> mapWithCorner(block: (T, DrivetrainCorner) -> U): PerCorner<U> = generate { corner ->
@@ -113,3 +127,36 @@ val ChassisSpeeds.angularVelocity: AngularVelocity
     get() = omegaRadiansPerSecond.radiansPerSecond
 
 data class Corner(val position: Pose2d, val magnetOffset: Double)
+
+data class SwerveModuleTemperature(
+    val drivingMotorTemperature: Temperature,
+    val turningMotorTemperature: Temperature
+) : StructSerializable {
+    companion object {
+        @JvmField
+        @Suppress("unused")
+        val struct = SwerveModuleTemperatureStruct()
+    }
+}
+
+class SwerveModuleTemperatureStruct : Struct<SwerveModuleTemperature> {
+    override fun getTypeClass(): Class<SwerveModuleTemperature> = SwerveModuleTemperature::class.java
+    override fun getTypeName(): String = "struct:SwerveModuleTemperature"
+    override fun getTypeString(): String = "struct:SwerveModuleTemperature"
+    override fun getSize(): Int =
+        Struct.kSizeDouble * 2
+
+    override fun getSchema(): String =
+        "double drivingMotorTemperatureCelsius; double turningMotorTemperatureCelsius;"
+
+    override fun unpack(bb: ByteBuffer): SwerveModuleTemperature =
+        SwerveModuleTemperature(
+            bb.double.celsius,
+            bb.double.celsius
+        )
+
+    override fun pack(bb: ByteBuffer, value: SwerveModuleTemperature) {
+        bb.putDouble(value.drivingMotorTemperature.inCelsius())
+        bb.putDouble(value.turningMotorTemperature.inCelsius())
+    }
+}

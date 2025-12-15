@@ -6,30 +6,34 @@ import com.frcteam3636.swervebase.Diagnostics
 import com.frcteam3636.swervebase.Pigeon2
 import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
-import com.frcteam3636.swervebase.utils.math.*
+import com.frcteam3636.swervebase.utils.math.celsius
+import com.frcteam3636.swervebase.utils.math.degrees
+import com.frcteam3636.swervebase.utils.math.degreesPerSecond
+import com.frcteam3636.swervebase.utils.math.inRadians
+import com.frcteam3636.swervebase.utils.math.radians
 import com.frcteam3636.swervebase.utils.swerve.DrivetrainCorner
 import com.frcteam3636.swervebase.utils.swerve.PerCorner
+import com.frcteam3636.swervebase.utils.swerve.SwerveModuleTemperature
 import edu.wpi.first.apriltag.AprilTagFieldLayout
-import edu.wpi.first.apriltag.AprilTagFields
 import edu.wpi.first.math.geometry.Rotation2d
 import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.units.measure.Voltage
+import edu.wpi.first.wpilibj.Filesystem
 import org.photonvision.simulation.VisionSystemSim
 import org.team9432.annotation.Logged
 import kotlin.math.atan2
 
 @Logged
 open class DrivetrainInputs {
-    var gyroRotation = Rotation2d()
+    var gyroRotation = Rotation2d.kZero!!
     var gyroVelocity = 0.degreesPerSecond
     var gyroConnected = true
     var measuredStates = PerCorner.generate { SwerveModuleState() }
     var measuredPositions = PerCorner.generate { SwerveModulePosition() }
-    var frontRightTemperatures = doubleArrayOf()
-    var frontLeftTemperatures = doubleArrayOf()
-    var backLeftTemperatures = doubleArrayOf()
-    var backRightTemperatures = doubleArrayOf()
+    var moduleTemperatures = PerCorner.generate {
+        SwerveModuleTemperature(0.0.celsius, 0.0.celsius)
+    }
 }
 
 abstract class DrivetrainIO {
@@ -39,17 +43,16 @@ abstract class DrivetrainIO {
 
     open fun updateInputs(inputs: DrivetrainInputs) {
         gyro.periodic()
-        modules.forEach(SwerveModule::periodic)
+        modules.forEachIndexed { i, module ->
+            module.periodic()
+            inputs.measuredStates[i] = module.state     // no allocation
+            inputs.measuredPositions[i] = module.position   // no allocation
+        }
 
         inputs.gyroRotation = gyro.rotation
         inputs.gyroVelocity = gyro.velocity
         inputs.gyroConnected = gyro.connected
-        inputs.measuredStates = modules.map { it.state }
-        inputs.measuredPositions = modules.map { it.position }
-        inputs.frontRightTemperatures = modules.frontRight.temperatures.map { it.inCelsius() }.toDoubleArray()
-        inputs.backRightTemperatures = modules.backRight.temperatures.map { it.inCelsius() }.toDoubleArray()
-        inputs.frontLeftTemperatures = modules.frontLeft.temperatures.map { it.inCelsius() }.toDoubleArray()
-        inputs.backLeftTemperatures = modules.backLeft.temperatures.map { it.inCelsius() }.toDoubleArray()
+        inputs.moduleTemperatures = modules.map { it.temperatures }
     }
 
     var desiredStates: PerCorner<SwerveModuleState>
@@ -91,32 +94,29 @@ abstract class DrivetrainIO {
 
     }
 
-    fun getOdometryPositions(): PerCorner<Array<SwerveModulePosition>> {
-        return modules.map { it.odometryPositions }
-    }
+    val odometryPositions: PerCorner<Array<SwerveModulePosition>>
+        get() = modules.map { it.odometryPositions }
 
-    fun getOdometryTimestamps(): DoubleArray {
-        return modules[DrivetrainCorner.FRONT_LEFT].odometryTimestamps
-    }
+    val odometryTimestamps: DoubleArray
+        get() = modules[DrivetrainCorner.FRONT_LEFT].odometryTimestamps
 
-    @Suppress("unused")
-    fun getOdometryYawTimestamps(): DoubleArray {
-        return gyro.odometryYawTimestamps
-    }
+    val odometryYawPositions: DoubleArray
+        get() = gyro.odometryYawPositions
 
-    fun getOdometryYawPositions(): DoubleArray {
-        return gyro.odometryYawPositions
-    }
+    val validTimestamps: Int
+        get() = modules[DrivetrainCorner.FRONT_LEFT].validTimestamps
 
-    fun getStatusSignals(): MutableList<BaseStatusSignal> {
-        val signals = mutableListOf<BaseStatusSignal>()
+    val signals: Array<BaseStatusSignal>
+        get() {
+            var signals = arrayOf<BaseStatusSignal>()
 
-        modules.forEach { module ->
-            signals += module.getSignals()
+            modules.forEach { module ->
+                signals += module.signals
+            }
+
+            signals += gyro.signals
+            return signals
         }
-        signals += gyro.getStatusSignals()
-        return signals
-    }
 }
 
 /** Drivetrain I/O layer that uses real swerve modules along with a NavX gyro. */
@@ -152,6 +152,4 @@ class DrivetrainIOSim : DrivetrainIO() {
     }
 }
 
-val FIELD_LAYOUT = AprilTagFieldLayout.loadFromResource(
-    AprilTagFields.k2025ReefscapeWelded.m_resourceFile
-)!!
+val FIELD_LAYOUT = AprilTagFieldLayout(Filesystem.getDeployDirectory().path + "/Bunnybots-2025-AprilTagMap.json")

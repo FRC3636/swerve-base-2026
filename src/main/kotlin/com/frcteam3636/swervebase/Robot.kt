@@ -24,7 +24,6 @@ import edu.wpi.first.wpilibj2.command.Commands
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine
-import org.ironmaple.simulation.SimulatedArena
 import org.littletonrobotics.junction.LogFileUtil
 import org.littletonrobotics.junction.LoggedRobot
 import org.littletonrobotics.junction.Logger
@@ -87,7 +86,7 @@ object Robot : LoggedRobot() {
 
 //        Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
 
-        statusSignals += Drivetrain.getStatusSignals()
+        statusSignals += Drivetrain.signals
     }
 
     /** Start logging or pull replay logs from a file */
@@ -202,17 +201,6 @@ object Robot : LoggedRobot() {
             field.getObject("path").poses = it
             Logger.recordOutput("Drivetrain/Desired Path", *it.toTypedArray())
         }
-    }
-
-    override fun disabledInit() {
-        if (model == Model.SIMULATION) {
-            SimulatedArena.getInstance().resetFieldForAuto()
-        }
-    }
-
-    override fun simulationPeriodic() {
-        SimulatedArena.getInstance().simulationPeriodic()
-
     }
 
     private fun reportDiagnostics() {

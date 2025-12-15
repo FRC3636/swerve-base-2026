@@ -9,17 +9,14 @@ import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.DRI
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.FREE_SPEED
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.JOYSTICK_DEADBAND
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_ROTATION_GAINS
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.PATH_FOLLOWING_TRANSLATION_GAINS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.ROTATION_SENSITIVITY
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.TRANSLATION_SENSITIVITY
 import com.frcteam3636.swervebase.utils.fieldRelativeTranslation2d
 import com.frcteam3636.swervebase.utils.math.*
-import com.frcteam3636.swervebase.utils.swerve.Corner
-import com.frcteam3636.swervebase.utils.swerve.PerCorner
-import com.frcteam3636.swervebase.utils.swerve.cornerStatesToChassisSpeeds
-import com.frcteam3636.swervebase.utils.swerve.toCornerSwerveModuleStates
+import com.frcteam3636.swervebase.utils.swerve.*
 import com.frcteam3636.swervebase.utils.translation2d
-import com.pathplanner.lib.commands.PathfindingCommand
-import com.pathplanner.lib.pathfinding.Pathfinding
 import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
 import edu.wpi.first.math.filter.SlewRateLimiter
@@ -47,7 +44,7 @@ object Drivetrain : Subsystem {
     private val io = when (Robot.model) {
         Robot.Model.SIMULATION -> DrivetrainIOSim()
         Robot.Model.COMPETITION -> DrivetrainIOReal(
-            MODULE_POSITIONS.zip(Constants.KRAKEN_MODULE_CAN_IDS)
+            MODULE_POSITIONS.zip(Constants.MODULE_CAN_IDS)
                 .map { (corner, ids) ->
                     val (driveId, turnId, encoderId) = ids
                     Mk5nSwerveModule(
@@ -59,93 +56,12 @@ object Drivetrain : Subsystem {
     }
     val inputs = LoggedDrivetrainInputs()
 
-    private val mt2Algo = LimelightAlgorithm.MegaTag2({
-        poseEstimator.estimatedPosition.rotation
-    }, {
-        inputs.gyroVelocity
-    })
-
-    private val absolutePoseIOs = when (Robot.model) {
-        Robot.Model.SIMULATION -> mapOf(
-            "Limelight" to CameraSimPoseProvider("limelight", Transform3d()),
-        )
-
-        else -> mapOf(
-//            "Limelight Rear" to LimelightPoseProvider(
-//                "limelight-rear",
-//                algorithm = mt2Algo
-//            ),
-        )
-    }.mapValues { Pair(it.value, AbsolutePoseProviderInputs()) }
-
-    /** Helper for converting a desired drivetrain velocity into the speeds and angles for each swerve module */
-    private val kinematics =
-        SwerveDriveKinematics(
-            *MODULE_POSITIONS
-                .map { it.position.translation }
-                .toTypedArray()
-        )
-
-    /** Helper for estimating the location of the drivetrain on the field */
-    val poseEstimator =
-        SwerveDrivePoseEstimator(
-            kinematics, // swerve drive kinematics
-            inputs.gyroRotation, // initial gyro rotation
-            inputs.measuredPositions.toTypedArray(), // initial module positions
-            Pose2d(), // initial pose
-            VecBuilder.fill(0.02, 0.02, 0.005),
-            // Overwrite each measurement
-            VecBuilder.fill(0.0, 0.0, 0.0)
-        )
-
-    /** Whether every sensor used for pose estimation is connected. */
-    val allPoseProvidersConnected
-        get() = absolutePoseIOs.values.all { it.second.connected }
-
-
-    private var rawGyroRotation = Rotation2d.kZero
-
-    // someone please give me a better way to do this
-    val lastModulePositions = arrayOf(
-        SwerveModulePosition(),
-        SwerveModulePosition(),
-        SwerveModulePosition(),
-        SwerveModulePosition()
-    )
-
-    init {
-        Pathfinding.setPathfinder(
-            LocalADStarAK()
-        )
-
-//        AutoBuilder.configure(
-//            this::estimatedPose,
-//            this::estimatedPose::set,
-//            this::measuredChassisSpeeds,
-//            this::desiredChassisSpeeds::set,
-//            PPHolonomicDriveController(
-//                PATH_FOLLOWING_TRANSLATION_GAINS,
-//                PATH_FOLLOWING_ROTATION_GAINS
-//            ),
-//            RobotConfig.fromGUISettings(),
-//            // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
-//            { DriverStation.getAlliance() == Optional.of(DriverStation.Alliance.Red) },
-//            this
-//        )
-
-        if (Robot.model != Robot.Model.SIMULATION) {
-            PathfindingCommand.warmupCommand().schedule()
-        }
-
-        if (io is DrivetrainIOSim) {
-            io.registerPoseProviders(absolutePoseIOs.values.map { it.first })
-        }
-    }
-
     private val limiter = SlewRateLimiter(0.05)
     private var wheelRadiusModuleStates = DoubleArray(4)
-    private var wheelRadiusLastAngle = Rotation2d()
+    private var wheelRadiusLastAngle = Rotation2d.kZero
     private var wheelRadiusGyroDelta = 0.0
+
+    @Suppress("unused")
     fun calculateWheelRadius(): Command = Commands.parallel(
         Commands.sequence(
             Commands.runOnce({
@@ -154,8 +70,8 @@ object Drivetrain : Subsystem {
             }),
             Commands.run({
                 val speed = limiter.calculate(0.1)
-                driveWithoutDeadband(Translation2d(), Translation2d(0.0, speed))
-            }, Drivetrain)
+                driveWithoutDeadband(Translation2d.kZero, Translation2d(0.0, speed))
+            }, this)
         ),
         Commands.sequence(
             // Wait for modules to orient
@@ -197,32 +113,157 @@ object Drivetrain : Subsystem {
         )
     )
 
+    private var rawGyroRotation = Rotation2d.kZero
+
+    // someone please give me a better way to do this
+    val lastModulePositions = arrayOf(
+        SwerveModulePosition(),
+        SwerveModulePosition(),
+        SwerveModulePosition(),
+        SwerveModulePosition()
+    )
+
+    private val absolutePoseIOs = when (Robot.model) {
+        Robot.Model.SIMULATION -> mapOf(
+            "Limelight" to CameraSimPoseProvider("limelight", Transform3d()),
+        )
+
+        else -> mapOf(
+            "Limelight Left" to LimelightPoseProvider(
+                "limelight-left",
+                {
+                    poseEstimator.estimatedPosition.rotation
+                },
+                {
+                    inputs.gyroVelocity
+                },
+                {
+                    inputs.gyroConnected
+                },
+                isLL4 = true,
+            ),
+            "Limelight Right" to LimelightPoseProvider(
+                "limelight-right",
+                {
+                    poseEstimator.estimatedPosition.rotation
+                },
+                {
+                    inputs.gyroVelocity
+                },
+                {
+                    inputs.gyroConnected
+                },
+                true,
+            ),
+        )
+    }.mapValues { Pair(it.value, LoggedAbsolutePoseProviderInputs()) }
+
+    /** Helper for converting a desired drivetrain velocity into the speeds and angles for each swerve module */
+    private val kinematics =
+        SwerveDriveKinematics(
+            *MODULE_POSITIONS
+                .map { it.position.translation }
+                .toTypedArray()
+        )
+
+
+    private val acceptedPoses: MutableList<Pose2d> = mutableListOf()
+    private val rejectedPoses: MutableList<Pose2d> = mutableListOf()
+
+    /** Helper for estimating the location of the drivetrain on the field */
+    val poseEstimator =
+        SwerveDrivePoseEstimator(
+            kinematics, // swerve drive kinematics
+            inputs.gyroRotation, // initial gyro rotation
+            inputs.measuredPositions.toTypedArray(), // initial module positions
+            Pose2d(), // initial pose
+            VecBuilder.fill(0.02, 0.02, 0.005),
+            // Overwrite each measurement
+            VecBuilder.fill(0.0, 0.0, 0.0)
+        )
+
+    /** Whether every sensor used for pose estimation is connected. */
+    val allPoseProvidersConnected
+        get() = absolutePoseIOs.values.all { it.second.connected }
+
+    init {
+//        val pathPlannerConfig = RobotConfig(
+//            60.kilograms, // FIXME: weigh the robot
+//            6.883.kilogramSquareMeters, // FIXME: calculate with SysID
+//            ModuleConfig(
+//                WHEEL_RADIUS,
+//                FREE_SPEED,
+//                WHEEL_COF,
+//                DCMotor.getKrakenX60Foc(1).withReduction(DRIVING_GEAR_RATIO),
+//                DRIVING_CURRENT_LIMIT,
+//                1
+//            ),
+//            *MODULE_POSITIONS.map { it.position.translation }.toTypedArray()
+//        )
+
+//        AutoBuilder.configure(
+//            this::estimatedPose,
+//            this::estimatedPose::set,
+//            this::measuredChassisSpeeds,
+//            this::desiredChassisSpeeds::set,
+//            PPHolonomicDriveController(
+//                PATH_FOLLOWING_TRANSLATION_GAINS.toPPLib(),
+//                PATH_FOLLOWING_ROTATION_GAINS.toPPLib()
+//            ),
+//            pathPlannerConfig,
+//            // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
+//            {
+//                @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
+//                DriverStation.getAlliance() == Optional.of(DriverStation.Alliance.Red)
+//            },
+//            this
+//        )
+
+//        if (Robot.model != Robot.Model.SIMULATION) {
+//            PathfindingCommand.warmupCommand().schedule()
+//        }
+        if (io is DrivetrainIOSim) {
+            io.registerPoseProviders(absolutePoseIOs.values.map { it.first })
+        }
+
+        PhoenixOdometryThread.getInstance().start()
+    }
+
+    val modulePositions = Array(4) { SwerveModulePosition() }
+    val moduleDeltas = Array(4) { SwerveModulePosition() }
+
     override fun periodic() {
         if (Robot.model != Robot.Model.SIMULATION) {
             try {
                 Robot.odometryLock.lock()
                 io.updateInputs(inputs)
                 Logger.processInputs("Drivetrain", inputs)
-                val odometryTimestamps = io.getOdometryTimestamps()
-                val odometryPositions = io.getOdometryPositions()
-                val odometryYawPositons = io.getOdometryYawPositions()
-                Logger.recordOutput("Drivetrain/Odometry Positions Count", odometryPositions[0].size)
-                for (i in 0..<odometryTimestamps.size) {
-                    val modulePositions = Array(4) { index ->
-                        odometryPositions[index][i]
+                val odometryTimestamps = io.odometryTimestamps
+                val odometryPositions = io.odometryPositions
+                val odometryYawPositons = io.odometryYawPositions
+                val validTimestamps = io.validTimestamps
+                Logger.recordOutput("Drivetrain/Odometry Positions Count", odometryPositions.first().size)
+                for (i in 0..<validTimestamps) {
+                    for (index in 0..3) {
+                        val pos = odometryPositions[index][i]
+                        modulePositions[index].distanceMeters = pos.distanceMeters
+                        modulePositions[index].angle = pos.angle
                     }
-                    val moduleDeltas = Array(4) { index ->
-                        SwerveModulePosition(
-                            modulePositions[index].distanceMeters - lastModulePositions[index].distanceMeters,
-                            modulePositions[index].angle - lastModulePositions[index].angle
-                        )
-                    }
-                    for (moduleIndex in 0..3) {
-                        lastModulePositions[moduleIndex] = modulePositions[moduleIndex]
+
+                    // Compute deltas in-place
+                    for (index in 0..3) {
+                        val deltaDistance =
+                            modulePositions[index].distanceMeters - lastModulePositions[index].distanceMeters
+                        val deltaAngle = modulePositions[index].angle - lastModulePositions[index].angle
+                        moduleDeltas[index].distanceMeters = deltaDistance
+                        moduleDeltas[index].angle = deltaAngle
+
+                        // Update last positions
+                        lastModulePositions[index] = modulePositions[index]
                     }
 
                     rawGyroRotation = if (inputs.gyroConnected) {
-                        Rotation2d.fromDegrees(odometryYawPositons[i])
+                        Rotation2d(odometryYawPositons[i].degrees)
                     } else {
                         rawGyroRotation.plus(Rotation2d(kinematics.toTwist2d(*moduleDeltas).dtheta))
                     }
@@ -243,24 +284,33 @@ object Drivetrain : Subsystem {
 
 
         // Update absolute pose sensors and add their measurements to the pose estimator
+        rejectedPoses.clear()
+        acceptedPoses.clear()
         for ((name, ioPair) in absolutePoseIOs) {
             val (sensorIO, inputs) = ioPair
 
             sensorIO.updateInputs(inputs)
             Logger.processInputs("Drivetrain/Absolute Pose/$name", inputs)
 
-            Logger.recordOutput("Drivetrain/Absolute Pose/$name/Measurement Rejected", inputs.measurementRejected)
-            if (inputs.measurement != null) {
-                Logger.recordOutput("Drivetrain/Absolute Pose/$name/Measurement", inputs.measurement)
-                Logger.recordOutput("Drivetrain/Absolute Pose/$name/Pose", inputs.measurement?.pose)
-                if (!inputs.measurementRejected) {
-                    inputs.measurement?.let {
-                        poseEstimator.addAbsolutePoseMeasurement(it)
-                        Logger.recordOutput("Drivetrain/Last Added Pose", it.pose)
+            for (measurement in inputs.measurements) {
+                if (!measurement.shouldReject) {
+                    if (measurement.pose.x < 0.0 || measurement.pose.y < 0.0) {
+                        rejectedPoses.add(measurement.pose)
+                        continue
+                    } else if (measurement.pose.x > FIELD_LAYOUT.fieldLength || measurement.pose.y > FIELD_LAYOUT.fieldWidth) {
+                        rejectedPoses.add(measurement.pose)
+                        continue
                     }
+                    acceptedPoses.add(measurement.pose)
+                    poseEstimator.addAbsolutePoseMeasurement(measurement)
+                } else {
+                    rejectedPoses.add(measurement.pose)
                 }
             }
         }
+
+        Logger.recordOutput("Drivetrain/Absolute Pose/Accepted Poses", *acceptedPoses.toTypedArray())
+        Logger.recordOutput("Drivetrain/Absolute Pose/Rejected Poses", *rejectedPoses.toTypedArray())
 
 //        // Use the new measurements to update the pose estimator
 //        poseEstimator.update(
@@ -271,6 +321,14 @@ object Drivetrain : Subsystem {
         Logger.recordOutput("Drivetrain/Pose Estimator/Estimated Pose", poseEstimator.estimatedPosition)
         Logger.recordOutput("Drivetrain/Chassis Speeds", measuredChassisSpeeds)
         Logger.recordOutput("Drivetrain/Desired Chassis Speeds", desiredChassisSpeeds)
+        Logger.recordOutput(
+            "Drivetrain/Measured Velocity",
+            measuredChassisSpeeds.translation2dPerSecond.norm.metersPerSecond
+        )
+        Logger.recordOutput(
+            "Drivetrain/Desired Velocity",
+            desiredChassisSpeeds.translation2dPerSecond.norm.metersPerSecond
+        )
 
         Logger.recordOutput(
             "Drivetrain/TagPoses", *FIELD_LAYOUT.tags
@@ -285,13 +343,11 @@ object Drivetrain : Subsystem {
     private var desiredModuleStates
         get() = io.desiredStates
         set(value) {
-            synchronized(this) {
-                val stateArr = value.toTypedArray()
-                SwerveDriveKinematics.desaturateWheelSpeeds(stateArr, FREE_SPEED)
+            val stateArr = value.toTypedArray()
+            SwerveDriveKinematics.desaturateWheelSpeeds(stateArr, FREE_SPEED)
 
-                io.desiredStates = PerCorner.fromConventionalArray(stateArr)
-                Logger.recordOutput("Drivetrain/Desired States", *stateArr)
-            }
+            io.desiredStates = PerCorner.fromConventionalArray(stateArr)
+            Logger.recordOutput("Drivetrain/Desired States", *stateArr)
         }
 
     /**
@@ -325,10 +381,8 @@ object Drivetrain : Subsystem {
             )
         }
 
-
-    fun getStatusSignals(): MutableList<BaseStatusSignal> {
-        return io.getStatusSignals()
-    }
+    val signals: Array<BaseStatusSignal>
+        get() = io.signals
 
     private fun isInDeadband(translation: Translation2d) =
         abs(translation.x) < JOYSTICK_DEADBAND && abs(translation.y) < JOYSTICK_DEADBAND
@@ -339,12 +393,22 @@ object Drivetrain : Subsystem {
             desiredModuleStates = BRAKE_POSITION
         } else {
             desiredChassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-                calculateInputCurve(translationInput.x) * FREE_SPEED.baseUnitMagnitude() * TRANSLATION_SENSITIVITY,
-                calculateInputCurve(translationInput.y) * FREE_SPEED.baseUnitMagnitude() * TRANSLATION_SENSITIVITY,
+                calculateInputCurve(translationInput.x) * FREE_SPEED.inMetersPerSecond() * TRANSLATION_SENSITIVITY,
+                calculateInputCurve(translationInput.y) * FREE_SPEED.inMetersPerSecond() * TRANSLATION_SENSITIVITY,
                 rotationInput.y * TAU * ROTATION_SENSITIVITY,
                 estimatedPose.rotation
             )
         }
+    }
+
+    @Suppress("SameParameterValue")
+    private fun driveWithoutDeadband(translationInput: Translation2d, rotationInput: Translation2d) {
+        desiredChassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+            calculateInputCurve(translationInput.x) * FREE_SPEED.inMetersPerSecond() * TRANSLATION_SENSITIVITY,
+            calculateInputCurve(translationInput.y) * FREE_SPEED.inMetersPerSecond() * TRANSLATION_SENSITIVITY,
+            rotationInput.y * TAU * ROTATION_SENSITIVITY,
+            estimatedPose.rotation
+        )
     }
 
     private fun calculateInputCurve(input: Double): Double {
@@ -358,15 +422,6 @@ object Drivetrain : Subsystem {
             // Directly accessing Joystick.x/y gives inverted values - use a `Translation2d` instead.
             drive(translationJoystick.fieldRelativeTranslation2d, rotationJoystick.translation2d)
         }
-
-    private fun driveWithoutDeadband(translationInput: Translation2d, rotationInput: Translation2d) {
-        desiredChassisSpeeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-            calculateInputCurve(translationInput.x) * FREE_SPEED.baseUnitMagnitude() * TRANSLATION_SENSITIVITY,
-            calculateInputCurve(translationInput.y) * FREE_SPEED.baseUnitMagnitude() * TRANSLATION_SENSITIVITY,
-            rotationInput.y * TAU * ROTATION_SENSITIVITY,
-            estimatedPose.rotation
-        )
-    }
 
     @Suppress("unused")
     fun driveWithController(controller: CommandXboxController): Command =
@@ -392,6 +447,10 @@ object Drivetrain : Subsystem {
 //        io.setGyro(zeroPos)
     }
 
+    fun zeroFull() {
+        poseEstimator.resetPose(Pose2d(0.0, 0.0, Rotation2d.kZero))
+    }
+
     var sysID = SysIdRoutine(
         SysIdRoutine.Config(
             0.5.voltsPerSecond, 2.volts, null
@@ -404,27 +463,28 @@ object Drivetrain : Subsystem {
         )
     )
 
+    @Suppress("unused")
     fun sysIdQuasistatic(direction: SysIdRoutine.Direction) = run {
         io.runCharacterization(0.volts, shouldStraight = true)
     }.withTimeout(2.0).andThen(sysID.quasistatic(direction))!!
 
+    @Suppress("unused")
     fun sysIdDynamic(direction: SysIdRoutine.Direction) = run {
         io.runCharacterization(0.volts, shouldStraight = true)
     }.withTimeout(2.0).andThen(sysID.dynamic(direction))!!
 
+    @Suppress("unused")
     fun sysIdQuasistaticSpin(direction: SysIdRoutine.Direction) = run {
         io.runCharacterization(0.volts, shouldSpin = true)
     }.withTimeout(2.0).andThen(sysID.quasistatic(direction))!!
 
+    @Suppress("unused")
     fun sysIdDynamicSpin(direction: SysIdRoutine.Direction) = run {
         io.runCharacterization(0.volts, shouldSpin = true)
     }.withTimeout(2.0).andThen(sysID.dynamic(direction))!!
 
-    fun zeroFull() {
-        poseEstimator.resetPose(Pose2d(0.0, 0.0, Rotation2d.kZero))
-    }
-
-    internal object Constants {
+    @Suppress("unused")
+    object Constants {
         // Translation/rotation coefficient for teleoperated driver controls
         /** Unit: Percent of max robot speed */
         const val TRANSLATION_SENSITIVITY = 1.0 // FIXME: Increase
@@ -434,36 +494,48 @@ object Drivetrain : Subsystem {
 
         val ROBOT_LENGTH = 25.5.inches
         val ROBOT_WIDTH = 25.5.inches
+        val TRACK_WIDTH = abs(TunerConstants.FrontLeft!!.LocationY - TunerConstants.FrontRight!!.LocationY)
+        val WHEEL_BASE = abs(TunerConstants.FrontRight!!.LocationX - TunerConstants.BackRight!!.LocationX)
+        const val WHEEL_COF = 1.8 // FIXME: figure this out man idk
 
         val BUMPER_WIDTH = 30.inches
         val BUMPER_LENGTH = 30.inches
 
         const val JOYSTICK_DEADBAND = 0.075
 
-        val FRONT_RIGHT_MAGNET_OFFSET = TunerConstants.FrontRight!!.EncoderOffset
-        val FRONT_LEFT_MAGNET_OFFSET = TunerConstants.FrontLeft!!.EncoderOffset
-        val BACK_RIGHT_MAGNET_OFFSET = TunerConstants.BackRight!!.EncoderOffset
-        val BACK_LEFT_MAGNET_OFFSET = TunerConstants.BackLeft!!.EncoderOffset
+        val FRONT_LEFT_CONSTANTS = TunerConstants.FrontLeft!!
+        val FRONT_RIGHT_CONSTANTS = TunerConstants.FrontRight!!
+        val BACK_RIGHT_CONSTANTS = TunerConstants.BackRight!!
+        val BACK_LEFT_CONSTANTS = TunerConstants.BackLeft!!
+
+        val FRONT_LEFT_MAGNET_OFFSET = FRONT_LEFT_CONSTANTS.EncoderOffset
+        val FRONT_RIGHT_MAGNET_OFFSET = FRONT_RIGHT_CONSTANTS.EncoderOffset
+        val BACK_RIGHT_MAGNET_OFFSET = BACK_RIGHT_CONSTANTS.EncoderOffset
+        val BACK_LEFT_MAGNET_OFFSET = BACK_LEFT_CONSTANTS.EncoderOffset
 
         val MODULE_POSITIONS = PerCorner(
             frontLeft = Corner(
                 Pose2d(
-                    Translation2d(ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                    Translation2d(FRONT_LEFT_CONSTANTS.LocationX, FRONT_LEFT_CONSTANTS.LocationY),
+                    Rotation2d.kZero
                 ), FRONT_LEFT_MAGNET_OFFSET
             ),
             frontRight = Corner(
                 Pose2d(
-                    Translation2d(ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                    Translation2d(FRONT_RIGHT_CONSTANTS.LocationX, FRONT_RIGHT_CONSTANTS.LocationY),
+                    Rotation2d.fromDegrees(180.0)
                 ), FRONT_RIGHT_MAGNET_OFFSET
             ),
             backLeft = Corner(
                 Pose2d(
-                    Translation2d(-ROBOT_LENGTH, ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(0.0)
+                    Translation2d(BACK_LEFT_CONSTANTS.LocationX, BACK_LEFT_CONSTANTS.LocationY),
+                    Rotation2d.kZero
                 ), BACK_LEFT_MAGNET_OFFSET
             ),
             backRight = Corner(
                 Pose2d(
-                    Translation2d(-ROBOT_LENGTH, -ROBOT_WIDTH) / 2.0, Rotation2d.fromDegrees(180.0)
+                    Translation2d(BACK_RIGHT_CONSTANTS.LocationX, BACK_RIGHT_CONSTANTS.LocationY),
+                    Rotation2d.fromDegrees(180.0)
                 ), BACK_RIGHT_MAGNET_OFFSET
             ),
         )
@@ -471,13 +543,15 @@ object Drivetrain : Subsystem {
         val DRIVE_BASE_RADIUS = hypot(MODULE_POSITIONS.frontLeft.position.x, MODULE_POSITIONS.frontLeft.position.y)
 
         // Chassis Control
-        val FREE_SPEED = 6.06.metersPerSecond
+        val FREE_SPEED = TunerConstants.kSpeedAt12Volts
 
-        val PATH_FOLLOWING_TRANSLATION_GAINS = PIDGains(5.0).toPPLib()
-        val PATH_FOLLOWING_ROTATION_GAINS = PIDGains(5.0).toPPLib()
+        val PATH_FOLLOWING_TRANSLATION_GAINS = PIDGains(8.0, 0.0, 0.0)
+        val PATH_FOLLOWING_ROTATION_GAINS = PIDGains(10.0, 0.0, 0.0)
+
+        val POLAR_DRIVING_GAINS = PIDGains(5.0, 0.0, 0.0)
 
         // CAN IDs
-        val KRAKEN_MODULE_CAN_IDS =
+        val MODULE_CAN_IDS =
             PerCorner(
                 frontLeft =
                     Triple(

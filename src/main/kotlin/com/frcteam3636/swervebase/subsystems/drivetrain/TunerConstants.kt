@@ -30,8 +30,8 @@ object TunerConstants {
     // When using closed-loop control, the drive motor uses the control
     // output type specified by SwerveModuleConstants.DriveMotorClosedLoopOutput
     val driveGains: Slot0Configs? = Slot0Configs()
-        .withKP(0.93649).withKI(0.0).withKD(0.0)
-        .withKS(0.19928).withKV(0.64318).withKA(0.031718)
+        .withKP(0.7433).withKI(0.0).withKD(0.0)
+        .withKS(0.19991).withKV(0.63508).withKA(0.07864)
 
     // The closed-loop output type to use for the steer motors;
     // This affects the PID/FF gains for the steer motors
@@ -53,7 +53,7 @@ object TunerConstants {
 
     // The stator current at which the wheels start to slip;
     // This needs to be tuned to your individual robot
-    val kSlipCurrent: Current = Units.Amps.of(120.0)
+    val kSlipCurrent: Current = Units.Amps.of(80.0)
 
     val kSteerCurrentLimit: Current = Units.Amps.of(60.0)
 
@@ -68,6 +68,9 @@ object TunerConstants {
                 .withStatorCurrentLimitEnable(true)
         )
     private val encoderInitialConfigs = CANcoderConfiguration()
+
+    // Configs for the Pigeon 2; leave this null to skip applying Pigeon 2 configs
+    private val pigeonConfigs: Pigeon2Configuration? = null
 
     // Theoretical free speed (m/s) at 12 V applied output;
     // This needs to be tuned to your individual robot

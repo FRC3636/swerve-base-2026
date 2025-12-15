@@ -127,6 +127,48 @@ object LimelightHelpers {
         return inData[position]
     }
 
+    fun convertToLLPoseEstimate(measurementArray: DoubleArray, isMegaTag2: Boolean): PoseEstimate {
+        val pose = toPose2D(measurementArray)
+        val latency = extractArrayEntry(measurementArray, 6)
+        val tagCount = extractArrayEntry(measurementArray, 7).toInt()
+        val tagSpan = extractArrayEntry(measurementArray, 8)
+        val tagDist = extractArrayEntry(measurementArray, 9)
+        val tagArea = extractArrayEntry(measurementArray, 10)
+
+        val rawFiducials = arrayOfNulls<RawFiducial>(tagCount)
+        val valsPerFiducial = 7
+        val expectedTotalVals = 11 + valsPerFiducial * tagCount
+
+        if (measurementArray.size != expectedTotalVals) {
+            // Don't populate fiducials
+        } else {
+            for (i in 0 until tagCount) {
+                val baseIndex = 11 + (i * valsPerFiducial)
+                val id = measurementArray[baseIndex].toInt()
+                val txnc = measurementArray[baseIndex + 1]
+                val tync = measurementArray[baseIndex + 2]
+                val ta = measurementArray[baseIndex + 3]
+                val distToCamera = measurementArray[baseIndex + 4]
+                val distToRobot = measurementArray[baseIndex + 5]
+                val ambiguity = measurementArray[baseIndex + 6]
+                rawFiducials[i] =
+                    RawFiducial(id, txnc, tync, ta, distToCamera.meters, distToRobot.meters, ambiguity)
+            }
+        }
+
+        return PoseEstimate(
+            pose,
+            0.0, // we don't use this but it's required
+            latency,
+            tagCount,
+            tagSpan,
+            tagDist,
+            tagArea,
+            rawFiducials,
+            isMegaTag2
+        )
+    }
+
     private fun getBotPoseEstimate(limelightName: String, entryName: String, isMegaTag2: Boolean): PoseEstimate? {
         val poseEntry = getLimelightDoubleArrayEntry(limelightName, entryName)
 
