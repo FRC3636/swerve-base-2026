@@ -16,7 +16,7 @@ plugins {
 }
 
 val javaVersion by extra(17)
-val jvmVendor: JvmVendorSpec by extra { JvmVendorSpec.AMAZON }
+val jvmVendor: JvmVendorSpec by extra { JvmVendorSpec.ADOPTIUM }
 
 @Suppress("PropertyName")
 val ROBOT_MAIN_CLASS = "com.frcteam3636.swervebase.Main"
