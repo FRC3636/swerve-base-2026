@@ -3,13 +3,11 @@ package com.frcteam3636.swervebase
 import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.SignalLogger
-import com.frcteam3636.swervebase.Dashboard.field
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.version.BUILD_DATE
 import com.frcteam3636.version.DIRTY
 import com.frcteam3636.version.GIT_BRANCH
 import com.frcteam3636.version.GIT_SHA
-import com.pathplanner.lib.util.PathPlannerLogging
 import edu.wpi.first.hal.FRCNetComm.tInstances
 import edu.wpi.first.hal.FRCNetComm.tResourceType
 import edu.wpi.first.hal.HAL
@@ -192,16 +190,7 @@ object Robot : LoggedRobot() {
     }
 
     /** Add data to the driver station dashboard. */
-    private fun configureDashboard() {
-        PathPlannerLogging.setLogTargetPoseCallback {
-            field.getObject("target pose").pose = it
-            Logger.recordOutput("Drivetrain/Target Pose", it)
-        }
-        PathPlannerLogging.setLogActivePathCallback {
-            field.getObject("path").poses = it
-            Logger.recordOutput("Drivetrain/Desired Path", *it.toTypedArray())
-        }
-    }
+    private fun configureDashboard() {}
 
     private fun reportDiagnostics() {
         Diagnostics.periodic()
@@ -227,8 +216,7 @@ object Robot : LoggedRobot() {
     override fun autonomousInit() {
         if (!RobotState.beforeFirstEnable)
             RobotState.beforeFirstEnable = true
-//        autoCommand = Dashboard.autoChooser.selected
-        autoCommand?.schedule()
+        CommandScheduler.getInstance().schedule(autoCommand)
     }
 
     override fun teleopInit() {

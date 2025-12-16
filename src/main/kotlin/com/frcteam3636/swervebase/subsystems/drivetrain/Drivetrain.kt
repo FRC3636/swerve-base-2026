@@ -187,41 +187,6 @@ object Drivetrain : Subsystem {
         get() = absolutePoseIOs.values.all { it.second.connected }
 
     init {
-//        val pathPlannerConfig = RobotConfig(
-//            60.kilograms, // FIXME: weigh the robot
-//            6.883.kilogramSquareMeters, // FIXME: calculate with SysID
-//            ModuleConfig(
-//                WHEEL_RADIUS,
-//                FREE_SPEED,
-//                WHEEL_COF,
-//                DCMotor.getKrakenX60Foc(1).withReduction(DRIVING_GEAR_RATIO),
-//                DRIVING_CURRENT_LIMIT,
-//                1
-//            ),
-//            *MODULE_POSITIONS.map { it.position.translation }.toTypedArray()
-//        )
-
-//        AutoBuilder.configure(
-//            this::estimatedPose,
-//            this::estimatedPose::set,
-//            this::measuredChassisSpeeds,
-//            this::desiredChassisSpeeds::set,
-//            PPHolonomicDriveController(
-//                PATH_FOLLOWING_TRANSLATION_GAINS.toPPLib(),
-//                PATH_FOLLOWING_ROTATION_GAINS.toPPLib()
-//            ),
-//            pathPlannerConfig,
-//            // Mirror path when the robot is on the red alliance (the robot starts on the opposite side of the field)
-//            {
-//                @Suppress("IDENTITY_SENSITIVE_OPERATIONS_WITH_VALUE_TYPE")
-//                DriverStation.getAlliance() == Optional.of(DriverStation.Alliance.Red)
-//            },
-//            this
-//        )
-
-//        if (Robot.model != Robot.Model.SIMULATION) {
-//            PathfindingCommand.warmupCommand().schedule()
-//        }
         if (io is DrivetrainIOSim) {
             io.registerPoseProviders(absolutePoseIOs.values.map { it.first })
         }

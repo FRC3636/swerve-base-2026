@@ -1,18 +1,11 @@
 package com.frcteam3636.swervebase.subsystems.drivetrain
 
 import com.ctre.phoenix6.configs.*
-import com.ctre.phoenix6.hardware.CANcoder
-import com.ctre.phoenix6.hardware.TalonFX
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue
-import com.ctre.phoenix6.swerve.SwerveDrivetrain
-import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants
 import com.ctre.phoenix6.swerve.SwerveModuleConstants
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.DriveMotorArrangement
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory
-import edu.wpi.first.math.Matrix
-import edu.wpi.first.math.numbers.N1
-import edu.wpi.first.math.numbers.N3
 import edu.wpi.first.units.Units
 import edu.wpi.first.units.measure.*
 
@@ -191,96 +184,4 @@ object TunerConstants {
             kBackRightSteerMotorId, kBackRightDriveMotorId, kBackRightEncoderId, kBackRightEncoderOffset,
             kBackRightXPos, kBackRightYPos, kInvertRightSide, kBackRightSteerMotorInverted, kBackRightEncoderInverted
         )
-
-
-    /**
-     * Swerve Drive class utilizing CTR Electronics' Phoenix 6 API with the selected device types.
-     */
-    class TunerSwerveDrivetrain : SwerveDrivetrain<TalonFX?, TalonFX?, CANcoder?> {
-        /**
-         * Constructs a CTRE SwerveDrivetrain using the specified constants.
-         *
-         *
-         * This constructs the underlying hardware devices, so users should not construct
-         * the devices themselves. If they need the devices, they can access them through
-         * getters in the classes.
-         *
-         * @param drivetrainConstants   Drivetrain-wide constants for the swerve drive
-         * @param modules               Constants for each specific module
-         */
-        constructor(
-            drivetrainConstants: SwerveDrivetrainConstants,
-            vararg modules: SwerveModuleConstants<*, *, *>?
-        ) : super(
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> CANcoder(deviceId, canbus) },
-            drivetrainConstants,
-            *modules
-        )
-
-        /**
-         * Constructs a CTRE SwerveDrivetrain using the specified constants.
-         *
-         *
-         * This constructs the underlying hardware devices, so users should not construct
-         * the devices themselves. If they need the devices, they can access them through
-         * getters in the classes.
-         *
-         * @param drivetrainConstants     Drivetrain-wide constants for the swerve drive
-         * @param odometryUpdateFrequency The frequency to run the odometry loop. If
-         * unspecified or set to 0 Hz, this is 250 Hz on
-         * CAN FD, and 100 Hz on CAN 2.0.
-         * @param modules                 Constants for each specific module
-         */
-        constructor(
-            drivetrainConstants: SwerveDrivetrainConstants,
-            odometryUpdateFrequency: Double,
-            vararg modules: SwerveModuleConstants<*, *, *>?
-        ) : super(
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> CANcoder(deviceId, canbus) },
-            drivetrainConstants,
-            odometryUpdateFrequency,
-            *modules
-        )
-
-        /**
-         * Constructs a CTRE SwerveDrivetrain using the specified constants.
-         *
-         *
-         * This constructs the underlying hardware devices, so users should not construct
-         * the devices themselves. If they need the devices, they can access them through
-         * getters in the classes.
-         *
-         * @param drivetrainConstants       Drivetrain-wide constants for the swerve drive
-         * @param odometryUpdateFrequency   The frequency to run the odometry loop. If
-         * unspecified or set to 0 Hz, this is 250 Hz on
-         * CAN FD, and 100 Hz on CAN 2.0.
-         * @param odometryStandardDeviation The standard deviation for odometry calculation
-         * in the form [x, y, theta]ᵀ, with units in meters
-         * and radians
-         * @param visionStandardDeviation   The standard deviation for vision calculation
-         * in the form [x, y, theta]ᵀ, with units in meters
-         * and radians
-         * @param modules                   Constants for each specific module
-         */
-        constructor(
-            drivetrainConstants: SwerveDrivetrainConstants,
-            odometryUpdateFrequency: Double,
-            odometryStandardDeviation: Matrix<N3?, N1?>,
-            visionStandardDeviation: Matrix<N3?, N1?>,
-            vararg modules: SwerveModuleConstants<*, *, *>?
-        ) : super(
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> TalonFX(deviceId, canbus) },
-            DeviceConstructor { deviceId: Int, canbus: String? -> CANcoder(deviceId, canbus) },
-            drivetrainConstants,
-            odometryUpdateFrequency,
-            odometryStandardDeviation,
-            visionStandardDeviation,
-            *modules
-        )
-    }
 }

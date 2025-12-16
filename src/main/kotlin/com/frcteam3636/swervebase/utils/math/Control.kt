@@ -1,3 +1,4 @@
+@file:Suppress("unused")
 package com.frcteam3636.swervebase.utils.math
 
 import com.ctre.phoenix6.configs.Slot0Configs
@@ -47,5 +48,3 @@ var Slot0Configs.pidGains: PIDGains
         kI = gains.i
         kD = gains.d
     }
-
-fun PIDGains.toPPLib() = com.pathplanner.lib.config.PIDConstants(p, i, d)
