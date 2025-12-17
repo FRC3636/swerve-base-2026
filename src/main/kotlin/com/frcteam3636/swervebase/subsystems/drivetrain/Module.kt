@@ -25,23 +25,16 @@ import edu.wpi.first.wpilibj.simulation.DCMotorSim
 import java.util.*
 
 interface SwerveModule {
-    // The current "state" of the swerve module.
-    //
-    // This is essentially the velocity of the wheel,
-    // and includes both the speed and the angle
-    // in which the module is currently traveling.
+    // This is the current wheel and wheel turning speeds
     val state: SwerveModuleState
 
-    // The desired state of the module.
-    //
-    // This is the wheel velocity that we're trying to get to.
+    // This is the module state that we're trying to get to.
     var desiredState: SwerveModuleState
 
-    // The measured position of the module.
-    //
     // This is a vector with direction equal to the current angle of the module,
     // and magnitude equal to the total signed distance traveled by the wheel.
     val position: SwerveModulePosition
+
     val positionRad: Angle
     var odometryTimestamps: DoubleArray
     var odometryTurnPositions: Array<Rotation2d>
@@ -59,8 +52,8 @@ interface SwerveModule {
 class Mk5nSwerveModule(
     val drivingMotor: SwerveDrivingMotor, val turningMotor: SwerveTurningMotor, private val chassisAngle: Rotation2d
 ) : SwerveModule {
-    private var timestampQueue: Queue<Double> = PhoenixOdometryThread.getInstance().makeTimestampQueue()
 
+    private var timestampQueue: Queue<Double> = PhoenixOdometryThread.getInstance().makeTimestampQueue()
     private val maxQueueSize = 100  // or however many timestamps we expect
 
     // preallocate to reduce GC pressure
@@ -93,9 +86,10 @@ class Mk5nSwerveModule(
         }
     }
 
-    override var desiredState: SwerveModuleState = SwerveModuleState(0.0, -chassisAngle)
+    override var desiredState: SwerveModuleState = SwerveModuleState(0.0, Rotation2d())
         get() = SwerveModuleState(field.speedMetersPerSecond, field.angle + chassisAngle)
         set(value) {
+            //corrected means module-relative angle
             val corrected = SwerveModuleState(value.speedMetersPerSecond, value.angle - chassisAngle)
             // optimize the state to avoid rotating more than 90 degrees
             corrected.optimize(
@@ -104,7 +98,6 @@ class Mk5nSwerveModule(
 
             drivingMotor.velocity = corrected.speed + (turningMotor.velocity * COUPLING_RATIO).toLinear(WHEEL_RADIUS)
             turningMotor.position = corrected.angle.measure
-
 
             field = corrected
         }
@@ -141,16 +134,6 @@ class Mk5nSwerveModule(
     }
 }
 
-interface SwerveTurningMotor {
-    var position: Angle
-    val velocity: AngularVelocity
-    var odometryTurnPositions: Array<Rotation2d>
-    val temperature: Temperature
-    val signals: Array<BaseStatusSignal>
-
-    fun periodic() {}
-}
-
 interface SwerveDrivingMotor {
     val position: Distance
     val positionRad: Angle
@@ -159,6 +142,15 @@ interface SwerveDrivingMotor {
     val temperature: Temperature
     val signals: Array<BaseStatusSignal>
     fun setVoltage(voltage: Voltage)
+    fun periodic() {}
+}
+
+interface SwerveTurningMotor {
+    var position: Angle
+    val velocity: AngularVelocity
+    var odometryTurnPositions: Array<Rotation2d>
+    val temperature: Temperature
+    val signals: Array<BaseStatusSignal>
     fun periodic() {}
 }
 
@@ -196,7 +188,8 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
     }
 
     override val position: Distance
-        get() = positionSignal.value.toLinear(WHEEL_RADIUS)
+        // This is different from inner.position.value, does it need the driving gear ratio?
+        get() = positionSignal.value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO
 
     override val positionRad: Angle
         get() = positionSignal.value
@@ -206,9 +199,10 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
     }
 
     override var velocity: LinearVelocity
-        get() = velocitySignal.value.toLinear(WHEEL_RADIUS)
+        //again, do we need the ratio here?
+        get() = velocitySignal.value.toLinear(WHEEL_RADIUS) * DRIVING_GEAR_RATIO
         set(value) {
-            inner.setControl(velocityControl.withVelocity(value.toAngular(WHEEL_RADIUS)))
+            inner.setControl(velocityControl.withVelocity(value.toAngular(WHEEL_RADIUS) / DRIVING_GEAR_RATIO))
         }
 
     override val temperature: Temperature
