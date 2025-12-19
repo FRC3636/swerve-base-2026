@@ -236,12 +236,12 @@ class LimelightPoseProvider(
             measurements.add(measurement)
         }
 
-        if (txSubscriber.get() != 0.0 && isLL4) {
+        /*if (txSubscriber.get() != 0.0 && isLL4) {
             val latestPoseReading = megatag1Subscriber.get()
             if (latestPoseReading.size > 0) {
                 imuAlphaPublisher.accept(0.2)
             }
-        }
+        }*/
 
         return measurements
     }
