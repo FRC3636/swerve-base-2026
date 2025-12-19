@@ -4,6 +4,7 @@ import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.SignalLogger
 import com.frcteam3636.swervebase.CTREDeviceId
 import com.frcteam3636.swervebase.Robot
+import com.frcteam3636.swervebase.RobotState
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BRAKE_POSITION
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.DRIVE_BASE_RADIUS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.FREE_SPEED
@@ -263,7 +264,7 @@ object Drivetrain : Subsystem {
                     } else if (measurement.pose.x > FIELD_LAYOUT.fieldLength || measurement.pose.y > FIELD_LAYOUT.fieldWidth) {
                         rejectedPoses.add(measurement.pose)
                         continue
-                    } else if (abs(measurement.pose.rotation.degrees - estimatedPose.rotation.degrees) > 5) {
+                    } else if (abs(measurement.pose.rotation.degrees - estimatedPose.rotation.degrees) > 5 && !RobotState.beforeFirstEnable) {
                         rejectedPoses.add(measurement.pose)
                         continue
                     }
