@@ -263,6 +263,9 @@ object Drivetrain : Subsystem {
                     } else if (measurement.pose.x > FIELD_LAYOUT.fieldLength || measurement.pose.y > FIELD_LAYOUT.fieldWidth) {
                         rejectedPoses.add(measurement.pose)
                         continue
+                    } else if (abs(measurement.pose.rotation.degrees - estimatedPose.rotation.degrees) > 5) {
+                        rejectedPoses.add(measurement.pose)
+                        continue
                     }
                     acceptedPoses.add(measurement.pose)
                     poseEstimator.addAbsolutePoseMeasurement(measurement)
