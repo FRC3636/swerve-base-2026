@@ -248,8 +248,6 @@ object Drivetrain : Subsystem {
 
 
         // Update absolute pose sensors and add their measurements to the pose estimator
-        rejectedPoses.clear()
-        acceptedPoses.clear()
         for ((name, ioPair) in absolutePoseIOs) {
             val (sensorIO, inputs) = ioPair
 
@@ -274,10 +272,12 @@ object Drivetrain : Subsystem {
                     rejectedPoses.add(measurement.pose)
                 }
             }
-        }
 
-        Logger.recordOutput("Drivetrain/Absolute Pose/Accepted Poses", *acceptedPoses.toTypedArray())
-        Logger.recordOutput("Drivetrain/Absolute Pose/Rejected Poses", *rejectedPoses.toTypedArray())
+            Logger.recordOutput("Drivetrain/Absolute Pose/$name/Accepted Poses", *acceptedPoses.toTypedArray())
+            Logger.recordOutput("Drivetrain/Absolute Pose/$name/Rejected Poses", *rejectedPoses.toTypedArray())
+            acceptedPoses.clear()
+            rejectedPoses.clear()
+        }
 
 //        // Use the new measurements to update the pose estimator
 //        poseEstimator.update(
