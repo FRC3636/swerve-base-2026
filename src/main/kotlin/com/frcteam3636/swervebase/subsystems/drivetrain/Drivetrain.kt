@@ -139,7 +139,7 @@ object Drivetrain : Subsystem {
                 {
                     inputs.gyroConnected
                 },
-                isLL4 = true,
+                true,
             ),
             "Limelight Right" to LimelightPoseProvider(
                 "limelight-right",
@@ -420,7 +420,7 @@ object Drivetrain : Subsystem {
 
     var sysID = SysIdRoutine(
         SysIdRoutine.Config(
-            0.5.voltsPerSecond, 2.volts, null
+            null, null, null
         ) {
             SignalLogger.writeString("state", it.toString())
         }, SysIdRoutine.Mechanism(
