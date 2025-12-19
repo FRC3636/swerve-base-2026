@@ -124,7 +124,7 @@ object Drivetrain : Subsystem {
 
     private val absolutePoseIOs = when (Robot.model) {
         Robot.Model.SIMULATION -> mapOf(
-            "Limelight" to CameraSimPoseProvider("limelight", Transform3d()),
+            "Limelight" to CameraSimPoseProvider("limelight", Transform3d.kZero),
         )
 
         else -> mapOf(
