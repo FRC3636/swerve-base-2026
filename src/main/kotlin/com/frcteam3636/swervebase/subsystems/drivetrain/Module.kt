@@ -8,6 +8,7 @@ import com.ctre.phoenix6.controls.VelocityVoltage
 import com.ctre.phoenix6.controls.VoltageOut
 import com.ctre.phoenix6.signals.FeedbackSensorSourceValue
 import com.ctre.phoenix6.signals.NeutralModeValue
+import com.ctre.phoenix6.signals.StaticFeedforwardSignValue
 import com.frcteam3636.swervebase.CANcoder
 import com.frcteam3636.swervebase.CTREDeviceId
 import com.frcteam3636.swervebase.Robot
@@ -239,21 +240,22 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
             Slot0.apply {
                 pidGains = TURNING_PID_GAINS
                 motorFFGains = TURNING_FF_GAINS
-                MotorOutput.apply {
-                    NeutralMode = NeutralModeValue.Brake
-                }
-                Feedback.apply {
-                    FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder
-                    RotorToSensorRatio = TURNING_GEAR_RATIO
-                    FeedbackRemoteSensorID = encoderId.num
-                }
-                CurrentLimits.apply {
-                    StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
-                    StatorCurrentLimitEnable = true
-                }
+                StaticFeedforwardSign = StaticFeedforwardSignValue.UseClosedLoopSign
             }
             ClosedLoopGeneral.apply {
                 ContinuousWrap = true
+            }
+            MotorOutput.apply {
+                NeutralMode = NeutralModeValue.Brake
+            }
+            Feedback.apply {
+                FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder
+                RotorToSensorRatio = TURNING_GEAR_RATIO
+                FeedbackRemoteSensorID = encoderId.num
+            }
+            CurrentLimits.apply {
+                StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
+                StatorCurrentLimitEnable = true
             }
         })
     }
