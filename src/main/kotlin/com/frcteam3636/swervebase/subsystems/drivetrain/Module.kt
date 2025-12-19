@@ -192,7 +192,7 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
     init {
         BaseStatusSignal.setUpdateFrequencyForAll(250.0, positionSignal)
         BaseStatusSignal.setUpdateFrequencyForAll(100.0, velocitySignal, temperatureSignal)
-        inner.optimizeBusUtilization()
+        inner.optimizeBusUtilization(0.0)
     }
 
     override val position: Distance
@@ -272,7 +272,7 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
         }
         BaseStatusSignal.setUpdateFrequencyForAll(250.0, positionSignal)
         BaseStatusSignal.setUpdateFrequencyForAll(100.0, velocitySignal, temperatureSignal)
-        inner.optimizeBusUtilization()
+        inner.optimizeBusUtilization(0.0)
     }
 
     private val positonControl = PositionVoltage(0.0).apply {

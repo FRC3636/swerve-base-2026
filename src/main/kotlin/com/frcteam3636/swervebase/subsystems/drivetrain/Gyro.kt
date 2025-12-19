@@ -84,7 +84,7 @@ class GyroPigeon(private val pigeon: Pigeon2) : Gyro {
             rollSignal,
             angularVelocitySignal
         )
-        pigeon.optimizeBusUtilization()
+        pigeon.optimizeBusUtilization(0.0)
         yawTimestampQueue = PhoenixOdometryThread.getInstance().makeTimestampQueue()
         yawPositionQueue = PhoenixOdometryThread.getInstance().registerSignal(yawSignal.clone())
     }

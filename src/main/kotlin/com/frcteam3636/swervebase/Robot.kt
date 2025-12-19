@@ -1,8 +1,8 @@
 package com.frcteam3636.swervebase
 
-import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.CANBus
 import com.ctre.phoenix6.SignalLogger
+import com.ctre.phoenix6.StatusSignalCollection
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain
 import com.frcteam3636.version.BUILD_DATE
 import com.frcteam3636.version.DIRTY
@@ -59,9 +59,8 @@ object Robot : LoggedRobot() {
 
     private val rioCANBus = CANBus("rio")
     private val canivore = CANBus("*")
-    var didRefreshSucceed = true
 
-    private val statusSignals = mutableListOf<BaseStatusSignal>()
+    val statusSignals = StatusSignalCollection()
 
     val odometryLock = ReentrantLock()
 
@@ -84,7 +83,7 @@ object Robot : LoggedRobot() {
 
 //        Diagnostics.reportLimelightsInBackground(arrayOf("limelight-left", "limelight-right"))
 
-        statusSignals += Drivetrain.signals
+        statusSignals.addSignals(*Drivetrain.signals)
     }
 
     /** Start logging or pull replay logs from a file */
@@ -205,8 +204,7 @@ object Robot : LoggedRobot() {
         Dashboard.update()
         reportDiagnostics()
 
-        val refresh = BaseStatusSignal.refreshAll(*statusSignals.toTypedArray())
-        didRefreshSucceed = refresh.isOK
+        statusSignals.refreshAll()
 
         CommandScheduler.getInstance().run()
 

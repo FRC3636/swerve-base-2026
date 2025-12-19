@@ -7,8 +7,6 @@ import com.frcteam3636.swervebase.utils.cachedStatus
 import edu.wpi.first.wpilibj.Alert
 import edu.wpi.first.wpilibj.Alert.AlertType
 import edu.wpi.first.wpilibj.GenericHID
-import java.net.InetAddress
-import kotlin.concurrent.thread
 
 /**
  * Reports diagnostics and sends notifications to the driver station.
@@ -124,7 +122,7 @@ object Diagnostics {
             reportAlert(RobotAlert.LimelightDisconnected)
         }
 
-        if (!Robot.didRefreshSucceed) {
+        if (!Robot.statusSignals.isAllGood) {
             reportAlert(RobotAlert.CANRefreshFailed)
         }
     }
