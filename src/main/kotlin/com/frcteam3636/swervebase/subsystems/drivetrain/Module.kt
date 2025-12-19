@@ -102,6 +102,8 @@ class Mk5nSwerveModule(
                 Rotation2d(turningMotor.position)
             )
 
+            corrected.cosineScale(Rotation2d(turningMotor.position))
+
             drivingMotor.velocity = corrected.speed + (turningMotor.velocity * COUPLING_RATIO).toLinear(WHEEL_RADIUS)
             turningMotor.position = corrected.angle.measure
 
