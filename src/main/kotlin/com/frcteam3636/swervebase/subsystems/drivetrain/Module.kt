@@ -93,7 +93,7 @@ class Mk5nSwerveModule(
         }
     }
 
-    override var desiredState: SwerveModuleState = SwerveModuleState(0.0, -chassisAngle)
+    override var desiredState: SwerveModuleState = SwerveModuleState(0.0, Rotation2d.kZero)
         get() = SwerveModuleState(field.speedMetersPerSecond, field.angle + chassisAngle)
         set(value) {
             val corrected = SwerveModuleState(value.speedMetersPerSecond, value.angle - chassisAngle)
@@ -143,16 +143,6 @@ class Mk5nSwerveModule(
     }
 }
 
-interface SwerveTurningMotor {
-    var position: Angle
-    val velocity: AngularVelocity
-    var odometryTurnPositions: Array<Rotation2d>
-    val temperature: Temperature
-    val signals: Array<BaseStatusSignal>
-
-    fun periodic() {}
-}
-
 interface SwerveDrivingMotor {
     val position: Distance
     val positionRad: Angle
@@ -161,6 +151,16 @@ interface SwerveDrivingMotor {
     val temperature: Temperature
     val signals: Array<BaseStatusSignal>
     fun setVoltage(voltage: Voltage)
+    fun periodic() {}
+}
+
+interface SwerveTurningMotor {
+    var position: Angle
+    val velocity: AngularVelocity
+    var odometryTurnPositions: Array<Rotation2d>
+    val temperature: Temperature
+    val signals: Array<BaseStatusSignal>
+
     fun periodic() {}
 }
 
