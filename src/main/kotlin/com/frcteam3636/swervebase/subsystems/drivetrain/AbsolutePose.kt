@@ -56,7 +56,7 @@ interface AbsolutePoseProvider {
 data class LimelightMeasurement(
     var poseMeasurement: AbsolutePoseMeasurement? = null,
     var observedTags: MutableList<Int> = mutableListOf(),
-    var shouldReject: Boolean = false,
+    var isLowQuality: Boolean = false,
 )
 
 class LimelightPoseProvider(
@@ -73,7 +73,6 @@ class LimelightPoseProvider(
     private var observedTags = mutableListOf<Int>()
 
     private var measurements = mutableListOf<AbsolutePoseMeasurement>()
-    private var shouldReject: Boolean = false
     private var lock = ReentrantLock()
 
     private var lastSeenHb: Double = 0.0
@@ -175,10 +174,10 @@ class LimelightPoseProvider(
 
             // Reject zero tag or low-quality one tag readings
             if (tagCount == 0) {
-                measurement.shouldReject = true
+                measurement.isLowQuality = true
             } else if (tagCount == 1) {
                 if (rawSample.value[17] > AMBIGUITY_THRESHOLD)
-                    measurement.shouldReject = true
+                    measurement.isLowQuality = true
             }
 
 
@@ -190,7 +189,7 @@ class LimelightPoseProvider(
                 parsePose(rawSample.value),
                 (rawSample.timestamp * 1.0e-6 - rawSample.value[6] * 1.0e-3).seconds,
                 APRIL_TAG_STD_DEV(rawSample.value[9], tagCount),
-                measurement.shouldReject
+                measurement.isLowQuality
             )
 
             measurements.add(measurement)
@@ -201,7 +200,7 @@ class LimelightPoseProvider(
             val measurement = LimelightMeasurement()
             val highSpeed = abs(gyroVelocity.inDegreesPerSecond()) > 360.0
             val tagCount = rawSample.value[7].toInt()
-            if (tagCount == 0 || highSpeed) measurement.shouldReject = true
+            if (tagCount == 0 || highSpeed) measurement.isLowQuality = true
 
             for (i in 11 until rawSample.value.size step 7) {
                 measurement.observedTags.add(rawSample.value[i].toInt())
@@ -211,7 +210,7 @@ class LimelightPoseProvider(
                 parsePose(rawSample.value),
                 (rawSample.timestamp * 1.0e-6 - rawSample.value[6] * 1.0e-3).seconds,
                 MEGATAG2_STD_DEV(rawSample.value[9], tagCount),
-                measurement.shouldReject
+                measurement.isLowQuality
             )
 
             measurements.add(measurement)
@@ -368,9 +367,6 @@ class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : Ab
                 // we don't need multitag in sim
                 // aka I really don't care enough to implement it
                 val target = result.targets[0]
-                var shouldReject = false
-                if (result.bestTarget.poseAmbiguity > 0.3)
-                    shouldReject = true
                 inputs.observedTags = result.targets.map {
                     it.fiducialId
                 }.toIntArray()
@@ -385,7 +381,7 @@ class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : Ab
                     robotPose,
                     result.timestampSeconds.seconds,
                     APRIL_TAG_STD_DEV(cameraToTarget.translation.norm, result.targets.size),
-                    shouldReject
+                    result.bestTarget.poseAmbiguity > 0.3
                 )
             }
         }
@@ -401,7 +397,7 @@ data class AbsolutePoseMeasurement(
      * radians). Increase these numbers to trust the vision pose measurement less.
      */
     val stdDeviation: Matrix<N3, N1> = VecBuilder.fill(0.0, 0.0, 0.0),
-    val shouldReject: Boolean = true,
+    val isLowQuality: Boolean = true,
 ) : StructSerializable {
     companion object {
         @JvmField
@@ -438,14 +434,14 @@ class AbsolutePoseMeasurementStruct : Struct<AbsolutePoseMeasurement> {
         Pose2d.struct.size + kSizeDouble + 3 * kSizeDouble + kSizeBool
 
     override fun getSchema(): String =
-        "Pose2d pose; double timestamp; double stdDeviation[3]; bool targetPresent;"
+        "Pose2d pose; double timestamp; double stdDeviation[3]; bool isLowQuality;"
 
     override fun unpack(bb: ByteBuffer): AbsolutePoseMeasurement =
         AbsolutePoseMeasurement(
             pose = Pose2d.struct.unpack(bb),
             timestamp = bb.double.seconds,
             stdDeviation = VecBuilder.fill(bb.double, bb.double, bb.double),
-            shouldReject = bb.get() != 0.toByte(), // read boolean as byte
+            isLowQuality = bb.get() != 0.toByte(), // read boolean as byte
         )
 
     override fun pack(bb: ByteBuffer, value: AbsolutePoseMeasurement) {
@@ -454,7 +450,7 @@ class AbsolutePoseMeasurementStruct : Struct<AbsolutePoseMeasurement> {
         bb.putDouble(value.stdDeviation[0, 0])
         bb.putDouble(value.stdDeviation[1, 0])
         bb.putDouble(value.stdDeviation[2, 0])
-        bb.put(if (value.shouldReject) 1 else 0) // write boolean as byte
+        bb.put(if (value.isLowQuality) 1 else 0) // write boolean as byte
     }
 }
 
@@ -465,7 +461,7 @@ class TargetObservationStruct : Struct<TargetObservation> {
     override fun getSize(): Int =
         Rotation2d.struct.size * 2 + kSizeBool
 
-    override fun getSchema(): String = "Rotation2d tx; Rotation2d ty; bool hasTarget;"
+    override fun getSchema(): String = "Rotation2d tx; Rotation2d ty; bool targetPresent;"
 
     override fun unpack(bb: ByteBuffer): TargetObservation =
         TargetObservation(

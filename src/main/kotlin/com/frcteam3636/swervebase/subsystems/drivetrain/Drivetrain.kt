@@ -258,7 +258,7 @@ object Drivetrain : Subsystem {
             Logger.processInputs("Drivetrain/Absolute Pose/$name", inputs)
 
             for (measurement in inputs.measurements) {
-                if (!measurement.shouldReject) {
+                if (!measurement.isLowQuality) {
                     if (measurement.pose.x < 0.0 || measurement.pose.y < 0.0) {
                         rejectedPoses.add(measurement.pose)
                         continue
