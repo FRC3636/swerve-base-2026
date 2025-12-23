@@ -249,6 +249,8 @@ object Drivetrain : Subsystem {
             )
         }
 
+        Logger.recordOutput("Drivetrain/Raw Gyro Rotation", rawGyroRotation)
+
 
         // Update absolute pose sensors and add their measurements to the pose estimator
         for ((name, ioPair) in absolutePoseIOs) {
