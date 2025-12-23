@@ -6,12 +6,7 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 //import org.photonvision.PhotonPoseEstimator
 import com.frcteam3636.swervebase.Robot
 import com.frcteam3636.swervebase.RobotState
-import com.frcteam3636.swervebase.utils.LimelightHelpers.convertToLLPoseEstimate
-import com.frcteam3636.swervebase.utils.math.degrees
-import com.frcteam3636.swervebase.utils.math.inMilliseconds
-import com.frcteam3636.swervebase.utils.math.inSeconds
-import com.frcteam3636.swervebase.utils.math.meters
-import com.frcteam3636.swervebase.utils.math.seconds
+import com.frcteam3636.swervebase.utils.math.*
 import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.VecBuilder
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator
@@ -21,12 +16,11 @@ import edu.wpi.first.math.geometry.Transform3d
 import edu.wpi.first.math.numbers.N1
 import edu.wpi.first.math.numbers.N3
 import edu.wpi.first.networktables.NetworkTableInstance
-import edu.wpi.first.units.Units.DegreesPerSecond
 import edu.wpi.first.units.measure.AngularVelocity
 import edu.wpi.first.units.measure.Time
 import edu.wpi.first.util.struct.Struct
 import edu.wpi.first.util.struct.Struct.kSizeBool
-import edu.wpi.first.util.struct.Struct.kSizeInt32
+import edu.wpi.first.util.struct.Struct.kSizeDouble
 import edu.wpi.first.util.struct.StructSerializable
 import org.photonvision.PhotonCamera
 import org.photonvision.simulation.PhotonCameraSim
@@ -34,7 +28,7 @@ import org.photonvision.simulation.SimCameraProperties
 import org.team9432.annotation.Logged
 import java.nio.ByteBuffer
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.thread
+import kotlin.math.abs
 import kotlin.math.pow
 
 @Logged
@@ -60,28 +54,9 @@ interface AbsolutePoseProvider {
 
 data class LimelightMeasurement(
     var poseMeasurement: AbsolutePoseMeasurement? = null,
-    var observedTags: IntArray = intArrayOf(),
+    var observedTags: MutableList<Int> = mutableListOf(),
     var shouldReject: Boolean = false,
-) /* --- BEGIN KOTLIN COMPILER GENERATED CODE ---- */ {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as LimelightMeasurement
-
-        if (poseMeasurement != other.poseMeasurement) return false
-        if (!observedTags.contentEquals(other.observedTags)) return false
-        if (shouldReject != other.shouldReject) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = poseMeasurement?.hashCode() ?: 0
-        result = 31 * result + observedTags.contentHashCode()
-        return result
-    }
-} /* --- END KOTLIN COMPILER GENERATED CODE ---- */
+)
 
 class LimelightPoseProvider(
     name: String,
@@ -101,12 +76,13 @@ class LimelightPoseProvider(
     private var lock = ReentrantLock()
 
     private var lastSeenHb: Double = 0.0
-    private var table = NetworkTableInstance.getDefault().getTable(name)
-    private var hbSubscriber = table.getDoubleTopic("hb").subscribe(0.0)
-    private var txSubscriber = table.getDoubleTopic("tx").subscribe(0.0)
-    private var tySubscriber = table.getDoubleTopic("ty").subscribe(0.0)
-    private var megatag1Subscriber = table.getDoubleArrayTopic("botpose_wpiblue").subscribe(doubleArrayOf())
-    private var megatag2Subscriber =
+    private val table = NetworkTableInstance.getDefault().getTable(name)
+    private val hbSubscriber = table.getDoubleTopic("hb").subscribe(0.0)
+    private val txSubscriber = table.getDoubleTopic("tx").subscribe(0.0)
+    private val tySubscriber = table.getDoubleTopic("ty").subscribe(0.0)
+    private val tvSubscriber = table.getIntegerTopic("tv").subscribe(0)
+    private val megatag1Subscriber = table.getDoubleArrayTopic("botpose_wpiblue").subscribe(doubleArrayOf())
+    private val megatag2Subscriber =
         table.getDoubleArrayTopic("botpose_orb_wpiblue").subscribe(doubleArrayOf())
     private val gyroPublisher = table.getDoubleArrayTopic("robot_orientation_set").publish()
     private val throttlePublisher = table.getIntegerTopic("throttle_set").publish()
@@ -119,8 +95,6 @@ class LimelightPoseProvider(
 
     private var wasIMUChanged = false
 
-    private var cornerCount = 0
-
     val gyroVelocity: AngularVelocity
         get() = velocityGetter()
 
@@ -130,35 +104,35 @@ class LimelightPoseProvider(
     val gyroConnected: Boolean
         get() = gyroConnectionGetter()
 
-    init {
-        thread(isDaemon = true, name = name) { // TODO: do we need to keep this in a thread?
-            while (true) {
-                val temp = updateCurrentMeasurements()
-                try {
-                    lock.lock()
-                    if (measurements.isEmpty())
-                        observedTags.clear()
-                    for (measurement in temp) {
-                        measurements.add(measurement.poseMeasurement!!)
-                        for (tag in measurement.observedTags) {
-                            observedTags.add(tag)
-                        }
-                    }
-                    // We assume the camera has disconnected if there are no new updates for several ticks.
-                    val hb = hbSubscriber.get()
-                    connected = hb > lastSeenHb || loopsSinceLastSeen < CONNECTED_TIMEOUT
-                    if (hb == lastSeenHb)
-                        loopsSinceLastSeen++
-                    else
-                        loopsSinceLastSeen = 0
-                    lastSeenHb = hb
-                } finally {
-                    lock.unlock()
-                }
-                Thread.sleep(Robot.period.seconds.inMilliseconds().toLong())
-            }
-        }
-    }
+//    init {
+//        thread(isDaemon = true, name = name) { // TODO: do we need to keep this in a thread?
+//            while (true) {
+//                val temp = updateCurrentMeasurements()
+//                try {
+//                    lock.lock()
+//                    if (measurements.isEmpty())
+//                        observedTags.clear()
+//                    for (measurement in temp) {
+//                        measurements.add(measurement.poseMeasurement!!)
+//                        for (tag in measurement.observedTags) {
+//                            observedTags.add(tag)
+//                        }
+//                    }
+//                    // We assume the camera has disconnected if there are no new updates for several ticks.
+//                    val hb = hbSubscriber.get()
+//                    connected = hb > lastSeenHb || loopsSinceLastSeen < CONNECTED_TIMEOUT
+//                    if (hb == lastSeenHb)
+//                        loopsSinceLastSeen++
+//                    else
+//                        loopsSinceLastSeen = 0
+//                    lastSeenHb = hb
+//                } finally {
+//                    lock.unlock()
+//                }
+//                Thread.sleep(Robot.period.seconds.inMilliseconds().toLong())
+//            }
+//        }
+//    }
 
     private fun updateCurrentMeasurements(): MutableList<LimelightMeasurement> {
         val measurements: MutableList<LimelightMeasurement> = mutableListOf()
@@ -167,10 +141,10 @@ class LimelightPoseProvider(
             gyroPublisher.accept(doubleArrayOf(gyroAngle.degrees, 0.0, 0.0, 0.0, 0.0, 0.0))
             NetworkTableInstance.getDefault().flush()
         } else {
-            gyroPublisher.accept(doubleArrayOf(gyroAngle.degrees, 0.0, 0.0, 0.0, 0.0, 0.0))
-            NetworkTableInstance.getDefault().flush()
             if (RobotState.beforeFirstEnable) {
                 imuModePublisher.accept(1.toLong())
+                gyroPublisher.accept(doubleArrayOf(gyroAngle.degrees, 0.0, 0.0, 0.0, 0.0, 0.0))
+                NetworkTableInstance.getDefault().flush()
             }
             if (Robot.isDisabled && !isThrottled) {
                 throttlePublisher.accept(100.toLong())
@@ -192,26 +166,26 @@ class LimelightPoseProvider(
             if (rawSample.value.size == 0 || !RobotState.beforeFirstEnable) continue
             val measurement = LimelightMeasurement()
 
-            val estimate = convertToLLPoseEstimate(rawSample.value, false)
-
-            measurement.observedTags = estimate.rawFiducials.mapNotNull { it?.id }.toIntArray()
+            val tagCount = rawSample.value[7].toInt()
 
             // Reject zero tag or low-quality one tag readings
-            if (estimate.tagCount == 0) {
+            if (tagCount == 0) {
                 measurement.shouldReject = true
-            }
-            if (estimate.tagCount == 1) {
-                val fiducial = estimate.rawFiducials[0]!!
-                if (fiducial.ambiguity > AMBIGUITY_THRESHOLD)
+            } else if (tagCount == 1) {
+                if (rawSample.value[17] > AMBIGUITY_THRESHOLD)
                     measurement.shouldReject = true
             }
 
+
+            for (i in 11 until rawSample.value.size step 7) {
+                measurement.observedTags.add(rawSample.value[i].toInt())
+            }
+
             measurement.poseMeasurement = AbsolutePoseMeasurement(
-                estimate.pose,
+                parsePose(rawSample.value),
                 (rawSample.timestamp * 1.0e-6 - rawSample.value[6] * 1.0e-3).seconds,
-                APRIL_TAG_STD_DEV(estimate.avgTagDist, estimate.tagCount),
-                measurement.shouldReject,
-                measurement.observedTags.size
+                APRIL_TAG_STD_DEV(rawSample.value[9], tagCount),
+                measurement.shouldReject
             )
 
             measurements.add(measurement)
@@ -220,52 +194,77 @@ class LimelightPoseProvider(
         for (rawSample in megatag2Subscriber.readQueue()) {
             if (rawSample.value.size == 0 || RobotState.beforeFirstEnable || !gyroConnected) continue
             val measurement = LimelightMeasurement()
-            val estimate = convertToLLPoseEstimate(rawSample.value, true)
-            measurement.observedTags = estimate.rawFiducials.mapNotNull { it?.id }.toIntArray()
-            val highSpeed = gyroVelocity.abs(DegreesPerSecond) > 360.0
-            if (estimate.tagCount == 0 || highSpeed) measurement.shouldReject = true
+            val highSpeed = abs(gyroVelocity.inDegreesPerSecond()) > 360.0
+            val tagCount = rawSample.value[7].toInt()
+            if (tagCount == 0 || highSpeed) measurement.shouldReject = true
+
+            for (i in 11 until rawSample.value.size step 7) {
+                measurement.observedTags.add(rawSample.value[i].toInt())
+            }
 
             measurement.poseMeasurement = AbsolutePoseMeasurement(
-                estimate.pose,
+                parsePose(rawSample.value),
                 (rawSample.timestamp * 1.0e-6 - rawSample.value[6] * 1.0e-3).seconds,
-                MEGATAG2_STD_DEV(estimate.avgTagDist, estimate.tagCount),
-                measurement.shouldReject,
-                measurement.observedTags.size
+                MEGATAG2_STD_DEV(rawSample.value[9], tagCount),
+                measurement.shouldReject
             )
 
             measurements.add(measurement)
         }
 
-        /*if (txSubscriber.get() != 0.0 && isLL4) {
-            val latestPoseReading = megatag1Subscriber.get()
-            if (latestPoseReading.size > 0) {
-                imuAlphaPublisher.accept(0.2)
-            }
-        }*/
-
         return measurements
     }
 
+    private fun parsePose(rawArray: DoubleArray): Pose2d {
+        return Pose2d(
+            rawArray[0],
+            rawArray[1],
+            Rotation2d(
+                rawArray[3].degrees.inRadians(),
+            )
+        )
+    }
+
     override fun updateInputs(inputs: AbsolutePoseProviderInputs) {
-        try {
-            lock.lock()
-            inputs.measurements = measurements.toTypedArray()
-            inputs.observedTags = observedTags.toIntArray()
-            measurements.clear()
-            inputs.latestTargetObservation =
-                TargetObservation(Rotation2d(txSubscriber.get().degrees), Rotation2d(tySubscriber.get().degrees))
-            inputs.connected = connected
-        } finally {
-            lock.unlock()
+//        try {
+//            lock.lock()
+//            inputs.measurements = measurements.toTypedArray()
+//            inputs.observedTags = observedTags.toIntArray()
+//            measurements.clear()
+//            inputs.latestTargetObservation =
+//                TargetObservation(Rotation2d(txSubscriber.get().degrees), Rotation2d(tySubscriber.get().degrees))
+//            inputs.connected = connected
+//        } finally {
+//            lock.unlock()
+//        }
+        val newData = updateCurrentMeasurements()
+
+        inputs.observedTags = intArrayOf()
+        inputs.measurements = arrayOf()
+
+        for (measurement in newData) {
+            inputs.observedTags += measurement.observedTags
+            inputs.measurements += measurement.poseMeasurement!!
         }
+
+        inputs.latestTargetObservation = TargetObservation(
+            Rotation2d(txSubscriber.get().degrees),
+            Rotation2d(tySubscriber.get().degrees),
+            tvSubscriber.get() == 0.toLong()
+        )
+
+        val hb = hbSubscriber.get()
+        inputs.connected = hb > lastSeenHb || loopsSinceLastSeen >= CONNECTED_TIMEOUT
+        if (lastSeenHb == hb)
+            loopsSinceLastSeen++
+        else
+            loopsSinceLastSeen = 0
     }
 
     companion object {
         /**
          * The acceptable distance for a single-April-Tag reading.
-         *
-         * This is a somewhat conservative limit, but it is only applied when using the old MegaTag v1 algorithm.
-         * It's possible it could be increased if it's too restrictive.
+         * Only used when computing pose through MegaTagV1.
          */
         private val MAX_SINGLE_TAG_DISTANCE = 3.meters
 
@@ -275,7 +274,7 @@ class LimelightPoseProvider(
         private const val AMBIGUITY_THRESHOLD = 0.3
 
         /**
-         * The amount of time (in robot ticks) an update before considering the camera to be disconnected.
+         * The amount of time (in loop ticks) an update before considering the camera to be disconnected.
          */
         private const val CONNECTED_TIMEOUT = 250.0
     }
@@ -286,7 +285,7 @@ class PhotonVisionPoseProvider(name: String, val chassisToCamera: Transform3d) :
 
     override fun updateInputs(inputs: AbsolutePoseProviderInputs) {
         inputs.connected = camera.isConnected
-        inputs.measurements = emptyArray()
+        inputs.measurements = arrayOf()
         inputs.observedTags = intArrayOf()
 
         for (result in camera.allUnreadResults) {
@@ -319,12 +318,10 @@ class PhotonVisionPoseProvider(name: String, val chassisToCamera: Transform3d) :
                             totalTagDistance / result.targets.size,
                             multitagResult.fiducialIDsUsed.size
                         ),
-                        false,
-                        multitagResult.fiducialIDsUsed.size
+                        false
                     )
                 } else {
                     val target = result.targets.first()
-                    var shouldReject = false
                     val tagPose = FIELD_LAYOUT.getTagPose(target.fiducialId)
                     if (tagPose.isPresent) {
                         val cameraToTarget = target.bestCameraToTarget
@@ -333,23 +330,17 @@ class PhotonVisionPoseProvider(name: String, val chassisToCamera: Transform3d) :
                         val fieldToRobot = fieldToCamera.plus(chassisToCamera.inverse())
                         val robotPose =
                             Pose2d(fieldToRobot.translation.toTranslation2d(), fieldToRobot.rotation.toRotation2d())
-
-                        if (result.bestTarget.poseAmbiguity > 0.3 || result.bestTarget.bestCameraToTarget.translation.norm > FIELD_LAYOUT.fieldLength / 2) {
-                            shouldReject = true
-                        }
-
                         inputs.observedTags += target.fiducialId
                         inputs.measurements += AbsolutePoseMeasurement(
                             robotPose,
                             result.timestampSeconds.seconds,
                             APRIL_TAG_STD_DEV(cameraToTarget.translation.norm, result.targets.size),
-                            shouldReject,
-                            result.targets.size
+                            false
                         )
                     }
                 }
             } else {
-                inputs.latestTargetObservation = TargetObservation()
+                inputs.latestTargetObservation = TargetObservation(targetPresent = false)
             }
         }
     }
@@ -369,15 +360,17 @@ class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : Ab
     override fun updateInputs(inputs: AbsolutePoseProviderInputs) {
         inputs.connected = camera.isConnected
         inputs.measurements = arrayOf()
+        inputs.observedTags = intArrayOf()
 
         val unreadResults = camera.allUnreadResults
         for (result in unreadResults) {
             if (result.hasTargets()) {
-                val target = result.targets[0] // we don't need multitag in sim
+                // we don't need multitag in sim
+                // aka I really don't care enough to implement it
+                val target = result.targets[0]
                 var shouldReject = false
-                if (result.bestTarget.poseAmbiguity > 0.3 || result.bestTarget.bestCameraToTarget.translation.norm > FIELD_LAYOUT.fieldLength / 2) {
+                if (result.bestTarget.poseAmbiguity > 0.3)
                     shouldReject = true
-                }
                 inputs.observedTags = result.targets.map {
                     it.fiducialId
                 }.toIntArray()
@@ -392,8 +385,7 @@ class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : Ab
                     robotPose,
                     result.timestampSeconds.seconds,
                     APRIL_TAG_STD_DEV(cameraToTarget.translation.norm, result.targets.size),
-                    shouldReject,
-                    result.targets.size
+                    shouldReject
                 )
             }
         }
@@ -402,16 +394,14 @@ class CameraSimPoseProvider(name: String, val chassisToCamera: Transform3d) : Ab
 }
 
 data class AbsolutePoseMeasurement(
-    val pose: Pose2d,
-    val timestamp: Time,
+    val pose: Pose2d = Pose2d.kZero,
+    val timestamp: Time = 0.seconds,
     /**
      * Standard deviations of the vision pose measurement (x position in meters, y position in meters, and heading in
      * radians). Increase these numbers to trust the vision pose measurement less.
      */
-    val stdDeviation: Matrix<N3, N1>,
-    val shouldReject: Boolean,
-    // This is a COUNT of observed tags
-    val observedTags: Int
+    val stdDeviation: Matrix<N3, N1> = VecBuilder.fill(0.0, 0.0, 0.0),
+    val shouldReject: Boolean = true,
 ) : StructSerializable {
     companion object {
         @JvmField
@@ -423,6 +413,7 @@ data class AbsolutePoseMeasurement(
 data class TargetObservation(
     val tx: Rotation2d = Rotation2d.kZero,
     val ty: Rotation2d = Rotation2d.kZero,
+    val targetPresent: Boolean = false
 ) : StructSerializable {
     companion object {
         @JvmField
@@ -444,10 +435,10 @@ class AbsolutePoseMeasurementStruct : Struct<AbsolutePoseMeasurement> {
     override fun getTypeName(): String = "struct:AbsolutePoseMeasurement"
     override fun getTypeString(): String = "struct:AbsolutePoseMeasurement"
     override fun getSize(): Int =
-        Pose2d.struct.size + Struct.kSizeDouble + 3 * Struct.kSizeDouble + kSizeBool + kSizeInt32
+        Pose2d.struct.size + kSizeDouble + 3 * kSizeDouble + kSizeBool
 
     override fun getSchema(): String =
-        "Pose2d pose; double timestamp; double stdDeviation[3]; bool shouldReject; int32 observedTags;"
+        "Pose2d pose; double timestamp; double stdDeviation[3]; bool targetPresent;"
 
     override fun unpack(bb: ByteBuffer): AbsolutePoseMeasurement =
         AbsolutePoseMeasurement(
@@ -455,7 +446,6 @@ class AbsolutePoseMeasurementStruct : Struct<AbsolutePoseMeasurement> {
             timestamp = bb.double.seconds,
             stdDeviation = VecBuilder.fill(bb.double, bb.double, bb.double),
             shouldReject = bb.get() != 0.toByte(), // read boolean as byte
-            observedTags = bb.getInt()
         )
 
     override fun pack(bb: ByteBuffer, value: AbsolutePoseMeasurement) {
@@ -465,7 +455,6 @@ class AbsolutePoseMeasurementStruct : Struct<AbsolutePoseMeasurement> {
         bb.putDouble(value.stdDeviation[1, 0])
         bb.putDouble(value.stdDeviation[2, 0])
         bb.put(if (value.shouldReject) 1 else 0) // write boolean as byte
-        bb.putInt(value.observedTags)
     }
 }
 
@@ -474,20 +463,22 @@ class TargetObservationStruct : Struct<TargetObservation> {
     override fun getTypeName(): String = "struct:TargetObservation"
     override fun getTypeString(): String = "struct:TargetObservation"
     override fun getSize(): Int =
-        Rotation2d.struct.size * 2
+        Rotation2d.struct.size * 2 + kSizeBool
 
-    override fun getSchema(): String = "Rotation2d tx; Rotation2d ty;"
+    override fun getSchema(): String = "Rotation2d tx; Rotation2d ty; bool hasTarget;"
 
     override fun unpack(bb: ByteBuffer): TargetObservation =
         TargetObservation(
             Rotation2d.struct.unpack(bb),
-            Rotation2d.struct.unpack(bb)
+            Rotation2d.struct.unpack(bb),
+            bb.get() != 0.toByte()
         )
 
 
     override fun pack(bb: ByteBuffer, value: TargetObservation) {
         Rotation2d.struct.pack(bb, value.tx)
         Rotation2d.struct.pack(bb, value.ty)
+        bb.put(if (value.targetPresent) 1 else 0)
     }
 }
 
