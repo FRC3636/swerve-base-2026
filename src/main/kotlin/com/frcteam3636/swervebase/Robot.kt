@@ -28,7 +28,6 @@ import org.littletonrobotics.junction.Logger
 import org.littletonrobotics.junction.networktables.NT4Publisher
 import org.littletonrobotics.junction.wpilog.WPILOGReader
 import org.littletonrobotics.junction.wpilog.WPILOGWriter
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 
@@ -61,8 +60,6 @@ object Robot : LoggedRobot() {
     private val canivore = CANBus("*")
 
     val statusSignals = StatusSignalCollection()
-
-    val odometryLock = ReentrantLock()
 
     override fun robotInit() {
         // Report the use of the Kotlin Language for "FRC Usage Report" statistics
@@ -179,12 +176,6 @@ object Robot : LoggedRobot() {
             controllerDev.povLeft().whileTrue(Drivetrain.sysIdDynamic(SysIdRoutine.Direction.kReverse))
 
             joystickDev.button(1).whileTrue(Drivetrain.calculateWheelRadius())
-
-            joystickDev.button(2).onTrue(
-                Commands.runOnce({
-                    Drivetrain.zeroFull()
-                })
-            )
         }
     }
 

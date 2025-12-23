@@ -2,7 +2,7 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 
 import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.StatusSignal
-import com.frcteam3636.swervebase.Robot
+import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.odometryLock
 import edu.wpi.first.units.measure.Angle
 import edu.wpi.first.wpilibj.RobotController
 import java.util.*
@@ -30,7 +30,7 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
         val queue: Queue<Double> = ArrayBlockingQueue(20)
 
         signalsLock.lock()
-        Robot.odometryLock.lock()
+        odometryLock.lock()
         try {
             val newSignals = Array(phoenixSignals.size + 1) { i ->
                 if (i < phoenixSignals.size) phoenixSignals[i] else signal
@@ -39,7 +39,7 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
             phoenixQueues.add(queue)
         } finally {
             signalsLock.unlock()
-            Robot.odometryLock.unlock()
+            odometryLock.unlock()
         }
 
         return queue
@@ -47,11 +47,11 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
 
     fun makeTimestampQueue(): Queue<Double> {
         val queue = ArrayBlockingQueue<Double>(20)
-        Robot.odometryLock.lock()
+        odometryLock.lock()
         try {
             timestampQueues.add(queue)
         } finally {
-            Robot.odometryLock.unlock()
+            odometryLock.unlock()
         }
         return queue
     }
@@ -69,7 +69,7 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
                 signalsLock.unlock()
             }
 
-            Robot.odometryLock.lock()
+            odometryLock.lock()
             try {
                 var timestamp = RobotController.getFPGATime() / 1e6
                 var latency = 0.0
@@ -87,7 +87,7 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
                     timestampQueues[i].offer(timestamp)
                 }
             } finally {
-                Robot.odometryLock.unlock()
+                odometryLock.unlock()
             }
         }
     }

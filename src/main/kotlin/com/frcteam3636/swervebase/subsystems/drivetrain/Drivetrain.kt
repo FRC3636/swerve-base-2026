@@ -35,6 +35,7 @@ import edu.wpi.first.wpilibj2.command.Subsystem
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine
 import org.littletonrobotics.junction.Logger
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.jvm.optionals.getOrNull
 import kotlin.math.*
 
@@ -111,6 +112,8 @@ object Drivetrain : Subsystem {
                 }
         )
     )
+
+    val odometryLock = ReentrantLock()
 
     private var rawGyroRotation = Rotation2d.kZero
 
@@ -199,7 +202,7 @@ object Drivetrain : Subsystem {
     override fun periodic() {
         if (Robot.model != Robot.Model.SIMULATION) {
             try {
-                Robot.odometryLock.lock()
+                odometryLock.lock()
                 io.updateInputs(inputs)
                 Logger.processInputs("Drivetrain", inputs)
                 val odometryTimestamps = io.odometryTimestamps
@@ -234,7 +237,7 @@ object Drivetrain : Subsystem {
                     poseEstimator.updateWithTime(odometryTimestamps[i], rawGyroRotation, modulePositions)
                 }
             } finally {
-                Robot.odometryLock.unlock()
+                odometryLock.unlock()
             }
         } else {
             io.updateInputs(inputs)
