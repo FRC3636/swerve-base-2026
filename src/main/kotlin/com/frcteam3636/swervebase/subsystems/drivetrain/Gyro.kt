@@ -56,7 +56,7 @@ class GyroNavX(private val ahrs: AHRS) : Gyro {
         }
 
     override val velocity: AngularVelocity
-        get() = 0.degreesPerSecond // NavX get rate broken... use the Pigeon lol
+        get() = ahrs.rate.degreesPerSecond
 
     override var odometryYawPositions: DoubleArray = doubleArrayOf()
     override var odometryYawTimestamps: DoubleArray = doubleArrayOf()
