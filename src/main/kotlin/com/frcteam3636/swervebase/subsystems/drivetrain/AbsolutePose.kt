@@ -255,7 +255,7 @@ class LimelightPoseProvider(
             tvSubscriber.get() == 0.toLong()
         )
 
-        inputs.connected = (RobotController.getFPGATime() - hbSubscriber.lastChange / 1000) < 250
+        inputs.connected = (RobotController.getFPGATime() - hbSubscriber.lastChange / 1000) < CONNECTED_TIMEOUT
     }
 
     companion object {
