@@ -22,6 +22,7 @@ import edu.wpi.first.util.struct.Struct
 import edu.wpi.first.util.struct.Struct.kSizeBool
 import edu.wpi.first.util.struct.Struct.kSizeDouble
 import edu.wpi.first.util.struct.StructSerializable
+import edu.wpi.first.wpilibj.RobotController
 import org.photonvision.PhotonCamera
 import org.photonvision.simulation.PhotonCameraSim
 import org.photonvision.simulation.SimCameraProperties
@@ -88,8 +89,10 @@ class LimelightPoseProvider(
     private val throttlePublisher = table.getIntegerTopic("throttle_set").publish()
     private val imuModePublisher = table.getIntegerTopic("imumode_set").publish()
     private val imuAlphaPublisher = table.getDoubleTopic("imuassistalpha_set").publish()
-    private var loopsSinceLastSeen: Int = 0
+//    private var loopsSinceLastSeen: Int = 0
     private var connected = false
+
+    private var gyroState = DoubleArray(6)
 
     private var isThrottled = false
 
@@ -138,15 +141,17 @@ class LimelightPoseProvider(
         val measurements: MutableList<LimelightMeasurement> = mutableListOf()
 
         if (!isLL4) {
-            gyroPublisher.accept(doubleArrayOf(gyroAngle.degrees, 0.0, 0.0, 0.0, 0.0, 0.0))
+            gyroState[0] = gyroAngle.degrees
+            gyroPublisher.accept(gyroState)
             NetworkTableInstance.getDefault().flush()
         } else {
             if (RobotState.beforeFirstEnable) {
+                gyroState[0] = gyroAngle.degrees
                 imuModePublisher.accept(1.toLong())
-                gyroPublisher.accept(doubleArrayOf(gyroAngle.degrees, 0.0, 0.0, 0.0, 0.0, 0.0))
+                gyroPublisher.accept(gyroState)
                 NetworkTableInstance.getDefault().flush()
             }
-            if (Robot.isDisabled && !isThrottled) {
+            if (Robot.isDisabled && !isThrottled && !RobotState.beforeFirstEnable) {
                 throttlePublisher.accept(100.toLong())
                 isThrottled = true
             } else if (Robot.isEnabled && isThrottled) {
@@ -253,12 +258,7 @@ class LimelightPoseProvider(
             tvSubscriber.get() == 0.toLong()
         )
 
-        val hb = hbSubscriber.get()
-        inputs.connected = hb > lastSeenHb || loopsSinceLastSeen >= CONNECTED_TIMEOUT
-        if (lastSeenHb == hb)
-            loopsSinceLastSeen++
-        else
-            loopsSinceLastSeen = 0
+        inputs.connected = (RobotController.getFPGATime() - hbSubscriber.lastChange / 1000) < 250
     }
 
     companion object {
@@ -274,7 +274,7 @@ class LimelightPoseProvider(
         private const val AMBIGUITY_THRESHOLD = 0.3
 
         /**
-         * The amount of time (in loop ticks) an update before considering the camera to be disconnected.
+         * The amount of time (in milliseconds) an update before considering the camera to be disconnected.
          */
         private const val CONNECTED_TIMEOUT = 250.0
     }
