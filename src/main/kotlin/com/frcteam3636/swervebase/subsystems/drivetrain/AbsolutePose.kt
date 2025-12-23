@@ -159,11 +159,9 @@ class LimelightPoseProvider(
             }
         }
 
-        if ((!RobotState.beforeFirstEnable)) {
-            if (isLL4 && !wasIMUChanged) {
-                imuModePublisher.accept(3.toLong())
-                wasIMUChanged = true
-            }
+        if ((!RobotState.beforeFirstEnable) && (isLL4 && !wasIMUChanged)) {
+            imuModePublisher.accept(3.toLong())
+            wasIMUChanged = true
         }
 
         for (rawSample in megatag1Subscriber.readQueue()) {
