@@ -204,13 +204,13 @@ object Robot : LoggedRobot() {
 
     override fun autonomousInit() {
         if (!RobotState.beforeFirstEnable)
-            RobotState.beforeFirstEnable = true
+            RobotState.beforeFirstEnable = false
         CommandScheduler.getInstance().schedule(autoCommand)
     }
 
     override fun teleopInit() {
         if (!RobotState.beforeFirstEnable)
-            RobotState.beforeFirstEnable = true
+            RobotState.beforeFirstEnable = false
         autoCommand?.cancel()
     }
 
