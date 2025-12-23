@@ -177,6 +177,10 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
                 StatorCurrentLimit = DRIVING_CURRENT_LIMIT.inAmps()
                 StatorCurrentLimitEnable = true
             }
+            TorqueCurrent.apply {
+                PeakForwardTorqueCurrent = DRIVING_CURRENT_LIMIT.inAmps()
+                PeakReverseTorqueCurrent = -DRIVING_CURRENT_LIMIT.inAmps()
+            }
             Feedback.apply {
                 SensorToMechanismRatio = DRIVING_GEAR_RATIO
             }
@@ -253,9 +257,11 @@ class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Doub
                 RotorToSensorRatio = TURNING_GEAR_RATIO
                 FeedbackRemoteSensorID = encoderId.num
             }
-            CurrentLimits.apply {
-                StatorCurrentLimit = TURNING_CURRENT_LIMIT.inAmps()
-                StatorCurrentLimitEnable = true
+            MotionMagic.apply {
+                MotionMagicCruiseVelocity = 100.0 / TURNING_GEAR_RATIO
+                MotionMagicAcceleration = MotionMagicCruiseVelocity / 0.1
+                MotionMagicExpo_kA = 0.1
+                MotionMagicExpo_kV = 0.12 * TURNING_GEAR_RATIO
             }
         })
     }
@@ -382,7 +388,6 @@ internal val DRIVING_FF_GAINS: MotorFFGains = TunerConstants.driveGains!!.motorF
 internal val TURNING_PID_GAINS: PIDGains = TunerConstants.steerGains!!.pidGains
 internal val TURNING_FF_GAINS: MotorFFGains = TunerConstants.steerGains!!.motorFFGains
 
-internal val TURNING_CURRENT_LIMIT = TunerConstants.kSteerCurrentLimit
 internal val DRIVING_CURRENT_LIMIT = TunerConstants.kSlipCurrent // FIXME: Calculate
 
 const val COUPLING_RATIO = 0.64
