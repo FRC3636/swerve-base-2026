@@ -175,7 +175,7 @@ object Drivetrain : Subsystem {
             kinematics, // swerve drive kinematics
             inputs.gyroRotation, // initial gyro rotation
             inputs.measuredPositions.toTypedArray(), // initial module positions
-            Pose2d(), // initial pose
+            Pose2d.kZero, // initial pose
             VecBuilder.fill(0.02, 0.02, 0.005),
             // Overwrite each measurement
             VecBuilder.fill(0.0, 0.0, 0.0)
@@ -278,12 +278,6 @@ object Drivetrain : Subsystem {
             acceptedPoses.clear()
             rejectedPoses.clear()
         }
-
-//        // Use the new measurements to update the pose estimator
-//        poseEstimator.update(
-//            inputs.gyroRotation,
-//            inputs.measuredPositions.toTypedArray()
-//        )
 
         Logger.recordOutput("Drivetrain/Pose Estimator/Estimated Pose", poseEstimator.estimatedPosition)
         Logger.recordOutput("Drivetrain/Chassis Speeds", measuredChassisSpeeds)
@@ -414,9 +408,11 @@ object Drivetrain : Subsystem {
 //        io.setGyro(zeroPos)
     }
 
-    fun zeroFull() {
-        poseEstimator.resetPose(Pose2d(0.0, 0.0, Rotation2d.kZero))
-    }
+    @Suppress("unused")
+    fun stop(): Command =
+        runOnce {
+            desiredModuleStates = BRAKE_POSITION
+        }
 
     var sysID = SysIdRoutine(
         SysIdRoutine.Config(
@@ -514,8 +510,6 @@ object Drivetrain : Subsystem {
 
         val PATH_FOLLOWING_TRANSLATION_GAINS = PIDGains(8.0, 0.0, 0.0)
         val PATH_FOLLOWING_ROTATION_GAINS = PIDGains(10.0, 0.0, 0.0)
-
-        val POLAR_DRIVING_GAINS = PIDGains(5.0, 0.0, 0.0)
 
         // CAN IDs
         val MODULE_CAN_IDS =
