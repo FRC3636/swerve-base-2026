@@ -62,10 +62,6 @@ class PhoenixOdometryThread : Thread("PhoenixOdometry") {
             try {
                 if (!phoenixSignals.isEmpty()) {
                     BaseStatusSignal.waitForAll(2.0 / 250.0, *phoenixSignals)
-                } else {
-                    sleep((1000.0 / 250.0).toLong())
-                    if (!phoenixSignals.isEmpty())
-                        BaseStatusSignal.refreshAll(*phoenixSignals)
                 }
             } catch (e: InterruptedException) {
                 e.printStackTrace()
