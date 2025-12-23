@@ -208,10 +208,13 @@ object Robot : LoggedRobot() {
         CommandScheduler.getInstance().schedule(autoCommand)
     }
 
+    override fun autonomousExit() {
+        autoCommand?.cancel()
+    }
+
     override fun teleopInit() {
         if (!RobotState.beforeFirstEnable)
             RobotState.beforeFirstEnable = false
-        autoCommand?.cancel()
     }
 
     override fun testInit() {
