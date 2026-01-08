@@ -21,6 +21,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition
 import edu.wpi.first.math.kinematics.SwerveModuleState
 import edu.wpi.first.math.system.plant.DCMotor
 import edu.wpi.first.math.system.plant.LinearSystemId
+import edu.wpi.first.units.Units.Radians
 import edu.wpi.first.units.measure.*
 import edu.wpi.first.wpilibj.simulation.DCMotorSim
 import java.util.*
@@ -144,6 +145,61 @@ class Mk5nSwerveModule(
     }
 }
 
+class MAXSwerveModule(
+    private val drivingMotor: SwerveDrivingMotor, private val turningMotor: SwerveTurningMotor, private val chassisAngle: Rotation2d
+): SwerveModule {
+    private val maxQueueSize = 100  // or however many timestamps we expect
+
+    // preallocate to reduce GC pressure
+    private val emptySwerveModulePosition = SwerveModulePosition()
+    override var odometryTimestamps: DoubleArray = DoubleArray(maxQueueSize)
+    override var odometryDrivePositions = doubleArrayOf()
+    override var odometryTurnPositions: Array<Rotation2d> = Array(maxQueueSize) { Rotation2d.kZero }
+    override var odometryPositions: Array<SwerveModulePosition> = Array(maxQueueSize) { emptySwerveModulePosition }
+    override var validTimestamps: Int = 0
+    override var temperatures: SwerveModuleTemperature = SwerveModuleTemperature(0.0.celsius, 0.0.celsius)
+
+
+    override val state: SwerveModuleState
+        get() = SwerveModuleState(
+            drivingMotor.velocity.inMetersPerSecond(), Rotation2d.fromRadians(turningMotor.position.inRadians()) + chassisAngle
+        )
+
+    override val position: SwerveModulePosition
+        get() = SwerveModulePosition(
+            drivingMotor.position, Rotation2d.fromRadians(turningMotor.position.inRadians()) + chassisAngle
+        )
+
+    override val positionRad: Angle
+        get() = drivingMotor.positionRad
+
+    override fun characterize(voltage: Voltage, turningAngle: Angle?){
+        drivingMotor.setVoltage(voltage)
+        if (turningAngle != null) {
+            turningMotor.position = turningAngle
+        } else {
+            turningMotor.position = Radians.of(-chassisAngle.radians)
+        }
+    }
+
+    override var desiredState: SwerveModuleState = SwerveModuleState(0.0, Rotation2d())
+        get() = SwerveModuleState(field.speedMetersPerSecond, field.angle + chassisAngle)
+        set(value) {
+            // corrected is the module-relative angle
+            val corrected = SwerveModuleState(value.speedMetersPerSecond, value.angle - chassisAngle)
+            // optimize the state to avoid rotating more than 90 degrees
+            corrected.optimize(Rotation2d.fromRadians(turningMotor.position.inRadians()))
+
+            drivingMotor.velocity = corrected.speedMetersPerSecond.metersPerSecond
+            turningMotor.position = Radians.of(corrected.angle.radians)
+
+            field = corrected
+        }
+
+    override val signals: Array<BaseStatusSignal>
+        get() = turningMotor.signals + drivingMotor.signals
+}
+
 interface SwerveDrivingMotor {
     val position: Distance
     val positionRad: Angle
@@ -236,6 +292,8 @@ class DrivingTalon(id: CTREDeviceId) : SwerveDrivingMotor {
         positionQueue.clear()
     }
 }
+
+class TurningSparkMax(id: RevMotorControllerId)
 
 class TurningTalon(id: CTREDeviceId, encoderId: CTREDeviceId, magnetOffset: Double) : SwerveTurningMotor {
 

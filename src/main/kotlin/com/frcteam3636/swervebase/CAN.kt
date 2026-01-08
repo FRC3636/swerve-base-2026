@@ -26,6 +26,8 @@ enum class CTREDeviceId(val num: Int, val bus: CANBus) {
     PigeonGyro(20, canivoreBus),
 }
 
+enum class
+
 fun CANcoder(id: CTREDeviceId) = CANcoder(id.num, id.bus)
 fun TalonFX(id: CTREDeviceId) = TalonFX(id.num, id.bus)
 fun Pigeon2(id: CTREDeviceId) = Pigeon2(id.num, id.bus)
