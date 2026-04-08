@@ -2,7 +2,7 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 
 import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.hardware.Pigeon2
-import com.frcteam3636.swervebase.Robot
+import com.frcteam3636.swervebase.robot.Robot
 import com.frcteam3636.swervebase.utils.math.degreesPerSecond
 import com.frcteam3636.swervebase.utils.math.radiansPerSecond
 import com.frcteam3636.swervebase.utils.swerve.PerCorner

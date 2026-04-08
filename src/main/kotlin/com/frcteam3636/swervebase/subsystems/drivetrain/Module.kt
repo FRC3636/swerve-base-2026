@@ -11,7 +11,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue
 import com.frcteam3636.swervebase.CANcoder
 import com.frcteam3636.swervebase.CTREDeviceId
-import com.frcteam3636.swervebase.Robot
+import com.frcteam3636.swervebase.robot.Robot
 import com.frcteam3636.swervebase.TalonFX
 import com.frcteam3636.swervebase.utils.math.*
 import com.frcteam3636.swervebase.utils.swerve.SwerveModuleTemperature

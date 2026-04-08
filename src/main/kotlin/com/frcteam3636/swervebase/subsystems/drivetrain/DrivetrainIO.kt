@@ -4,7 +4,7 @@ import com.ctre.phoenix6.BaseStatusSignal
 import com.frcteam3636.swervebase.CTREDeviceId
 import com.frcteam3636.swervebase.Diagnostics
 import com.frcteam3636.swervebase.Pigeon2
-import com.frcteam3636.swervebase.Robot
+import com.frcteam3636.swervebase.robot.Robot
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.MODULE_POSITIONS
 import com.frcteam3636.swervebase.utils.math.celsius
 import com.frcteam3636.swervebase.utils.math.degrees

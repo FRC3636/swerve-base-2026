@@ -4,8 +4,8 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 
 //import org.photonvision.PhotonCamera
 //import org.photonvision.PhotonPoseEstimator
-import com.frcteam3636.swervebase.Robot
-import com.frcteam3636.swervebase.RobotState
+import com.frcteam3636.swervebase.robot.Robot
+import com.frcteam3636.swervebase.robot.RobotState
 import com.frcteam3636.swervebase.utils.math.*
 import edu.wpi.first.math.Matrix
 import edu.wpi.first.math.VecBuilder

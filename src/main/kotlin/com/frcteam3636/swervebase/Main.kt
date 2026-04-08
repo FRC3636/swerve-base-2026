@@ -2,6 +2,7 @@
 package com.frcteam3636.swervebase
 
 import edu.wpi.first.wpilibj.RobotBase
+import com.frcteam3636.swervebase.robot.Robot
 
 /**
  * Main initialization function. Do not perform any initialization here

@@ -3,8 +3,8 @@ package com.frcteam3636.swervebase.subsystems.drivetrain
 import com.ctre.phoenix6.BaseStatusSignal
 import com.ctre.phoenix6.SignalLogger
 import com.frcteam3636.swervebase.CTREDeviceId
-import com.frcteam3636.swervebase.Robot
-import com.frcteam3636.swervebase.RobotState
+import com.frcteam3636.swervebase.robot.Robot
+import com.frcteam3636.swervebase.robot.RobotState
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.BRAKE_POSITION
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.DRIVE_BASE_RADIUS
 import com.frcteam3636.swervebase.subsystems.drivetrain.Drivetrain.Constants.FREE_SPEED
